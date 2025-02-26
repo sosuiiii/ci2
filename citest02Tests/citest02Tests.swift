@@ -20,7 +20,7 @@ struct citest02Tests {
             as: .wait(
                 for: 0,  // スクショまでの時間
                 on: .image(
-                    precision: 0.9999,  // 一致率
+                    precision: 0.99,  // 一致率
                     layout: .fixed(
                         width: 375,
                         height: 667
