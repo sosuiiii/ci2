@@ -44,6 +44,15 @@ jobs:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
 #          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
+　　　　- name: Check if images exist in SnapshotFilePath folder
+         run: |
+           count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+           if [ $count -gt 0 ]; then
+             echo "Found $count image(s) in SnapshotFilePath folder."
+           else
+             echo "No images found in SnapshotFilePath folder."
+           fi
+
       - name: Test
         env:
           scheme: ${{ 'default' }}
