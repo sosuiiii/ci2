@@ -42,7 +42,8 @@ jobs:
         id: restore-vrt
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
-          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
+          key: "${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}"
+#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
       - name: Test
         env:
           scheme: ${{ 'default' }}
@@ -61,4 +62,5 @@ jobs:
         id: vrt-cache
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
-          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
+          key: "${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}"
+#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
