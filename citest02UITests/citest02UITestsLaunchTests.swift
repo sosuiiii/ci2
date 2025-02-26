@@ -19,5 +19,6 @@ final class citest02UITestsLaunchTests: XCTestCase {
 
     @MainActor
     func testLaunch() throws {
+        XCTFail()
     }
 }

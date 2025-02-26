@@ -22,11 +22,7 @@ final class citest02UITests: XCTestCase {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
     }
 
-    @MainActor
     func testExample() throws {
-    }
-
-    @MainActor
-    func testLaunchPerformance() throws {
+        XCTFail()
     }
 }
