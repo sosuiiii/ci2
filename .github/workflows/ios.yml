@@ -53,10 +53,8 @@ jobs:
             echo "No images found in SnapshotFilePath folder."
           fi
 
-      - name: Install ksdiff (if not pre-installed)
-        run: |
-          # Kaleidoscope のコマンドラインツールが利用可能か確認
-          which ksdiff || brew install --cask kaleidoscope
+      - name: Install ImageMagick on macOS
+        run: brew install imagemagick
 
       - name: Test
         env:
