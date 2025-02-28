@@ -107,15 +107,15 @@ jobs:
         if: ${{ failure() && github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
-        script: |
-          const snapshotInfo = `\n${{ steps.collect_snapshots.outputs.snapshot_info }}\n`;
-          const commentBody = `### Snapshot Comparison Details\n${snapshotInfo}`;
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: commentBody,
-          });
+          script: |
+            const snapshotInfo = `\n${{ steps.collect_snapshots.outputs.snapshot_info }}\n`;
+            const commentBody = `### Snapshot Comparison Details\n${snapshotInfo}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody,
+            });
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
