@@ -56,7 +56,7 @@ jobs:
       - name: Install ksdiff (if not pre-installed)
         run: |
           # Kaleidoscope のコマンドラインツールが利用可能か確認
-          which ksdiff || echo "ksdiffが見つかりません"
+          which ksdiff || brew install --cask kaleidoscope
 
       - name: Test
         env:
