@@ -80,8 +80,11 @@ jobs:
           
           # 失敗ディレクトリ内の各ファイルに対して処理を実施
           for failed in "$FAILED_DIR"/*; do
+            echo "Failed file: $failed"
             filename=$(basename "$failed")
+            echo "Filename: $filename"
             success="$SUCCESS_DIR/$filename"
+            echo "Success file: $success" 
             if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
