@@ -53,6 +53,11 @@ jobs:
             echo "No images found in SnapshotFilePath folder."
           fi
 
+      - name: Install ksdiff (if not pre-installed)
+        run: |
+          # Kaleidoscope のコマンドラインツールが利用可能か確認
+          which ksdiff || echo "ksdiffが見つかりません"
+
       - name: Test
         env:
           scheme: ${{ 'default' }}
@@ -88,8 +93,10 @@ jobs:
             if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
+              # 例: old.png と new.png の差分画像を diff.png として出力
+              ksdiff $success $failed -o diff.png
               # ksdiffで差分画像を生成。※ ksdiffがheadless環境での画像出力に対応している必要があります
-              ksdiff --output "$diff_file" "$success" "$failed"
+#              ksdiff --output "$diff_file" "$success" "$failed"
               if [ ! -f "$diff_file" ]; then
                 echo "Failed to generate diff for $filename"
                 exit 1
@@ -97,15 +104,6 @@ jobs:
             else
               echo "Success snapshot not found for $filename, skipping."
             fi
-          done
-
-          # 成功ディレクトリ内の各ファイルに対して処理を実施
-          for success in "$SUCCESS_DIR"/*; do
-            echo "Failed file: $success"
-            filename=$(basename "$success")
-            echo "Filename: $filename"
-            success="$SUCCESS_DIR/$filename"
-            echo "Success file: $success" 
           done
         shell: bash
 
