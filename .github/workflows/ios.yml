@@ -94,7 +94,7 @@ jobs:
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
               # 例: old.png と new.png の差分画像を diff.png として出力
-              ksdiff $success $failed --output diff.png
+              compare $success $failed diff.png
               # ksdiffで差分画像を生成。※ ksdiffがheadless環境での画像出力に対応している必要があります
               # ksdiff --output "$diff_file" "$success" "$failed"
               if [ ! -f "$diff_file" ]; then
