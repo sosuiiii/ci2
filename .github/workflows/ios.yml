@@ -78,8 +78,6 @@ jobs:
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           mkdir -p "$DIFF_DIR"
-          echo "Failure snapshots directory: $FAILED_DIR"
-          echo "Success snapshots directory: $SUCCESS_DIR"
           
           # 失敗ディレクトリ内の各ファイルに対して処理を実施
           for failed in "$FAILED_DIR"/*; do
@@ -89,7 +87,7 @@ jobs:
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
               # 例: old.png と new.png の差分画像を diff.png として出力
-              compare $success $failed diff.png
+              compare "$success" "$failed" "$diff_file"
               if [ ! -f "$diff_file" ]; then
                 echo "Failed to generate diff for $filename"
                 exit 1
