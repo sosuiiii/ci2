@@ -16,7 +16,7 @@ struct citest02Tests {
     @MainActor
     @Test func example() async throws {
         assertSnapshot(
-            of: Text("テスト").referenceFrame(),
+            of: Text("テストaa").referenceFrame(),
             as: .wait(
                 for: 0,  // スクショまでの時間
                 on: .image(
