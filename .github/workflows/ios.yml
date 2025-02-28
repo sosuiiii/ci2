@@ -98,6 +98,15 @@ jobs:
               echo "Success snapshot not found for $filename, skipping."
             fi
           done
+
+          # 成功ディレクトリ内の各ファイルに対して処理を実施
+          for success in "$SUCCESS_DIR"/*; do
+            echo "Failed file: $success"
+            filename=$(basename "$success")
+            echo "Filename: $filename"
+            success="$SUCCESS_DIR/$filename"
+            echo "Success file: $success" 
+          done
         shell: bash
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
