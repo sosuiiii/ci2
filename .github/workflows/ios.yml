@@ -52,6 +52,10 @@ jobs:
           else
             echo "No images found in SnapshotFilePath folder."
           fi
+      - name: Install Kaleidoscope (ksdiff)
+        run: |
+          brew install --cask kaleidoscope
+          echo "/Applications/Kaleidoscope.app/Contents/Resources" >> $GITHUB_PATH
 
       - name: Test
         env:
