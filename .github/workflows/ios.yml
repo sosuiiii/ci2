@@ -104,7 +104,7 @@ jobs:
           shell: bash
 
       - name: Comment on PR with snapshot image paths
-        if: failure() && github.event_name == 'pull_request'
+        if: ${{ failure() && github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
         script: |
