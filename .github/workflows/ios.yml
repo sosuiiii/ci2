@@ -52,10 +52,6 @@ jobs:
           else
             echo "No images found in SnapshotFilePath folder."
           fi
-      - name: Install Kaleidoscope (ksdiff)
-        run: |
-          brew install --cask kaleidoscope
-          echo "/Applications/Kaleidoscope.app/Contents/Resources" >> $GITHUB_PATH
 
       - name: Test
         env:
@@ -69,57 +65,53 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-      # 複数の失敗したスナップショットファイルに対して、成功時と同名の画像と比較してdiff画像を生成する
-      - name: Collect snapshot image paths
-        id: collect_snapshots
+# 複数の失敗したスナップショットファイルに対して、成功時と同名の画像と比較してdiff画像を生成する
+      - name: Generate diff images for all failed snapshots using ksdiff
+        if: failure()
         run: |
           set -e
           # ※ 以下のパスは環境に合わせて修正してください
           FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
-          snapshot_info=""
+          DIFF_DIR="$(pwd)/artifacts/diffs"
+          mkdir -p "$DIFF_DIR"
           echo "Failure snapshots directory: $FAILED_DIR"
           echo "Success snapshots directory: $SUCCESS_DIR"
-          # 失敗ディレクトリ内の各ファイルをループ
+          
+          # 失敗ディレクトリ内の各ファイルに対して処理を実施
           for failed in "$FAILED_DIR"/*; do
-          if [ -f "$failed" ]; then
+            echo "Failed file: $failed"
             filename=$(basename "$failed")
+            echo "Filename: $filename"
             success="$SUCCESS_DIR/$filename"
-          echo "Processing file: $filename"
-          if [ -f "$success" ]; then
-            snapshot_info+="**${filename}**\n"
-            snapshot_info+="  - Success: \`${success}\`\n"
-            snapshot_info+="  - Failure: \`${failed}\`\n\n"
-          else
-            snapshot_info+="**${filename}**: Success image not found, Failure: \`${failed}\`\n\n"
-          fi
-          else
-            echo "Skipping non-file entry: $failed"
-          fi
+            echo "Success file: $success" 
+            if [ -f "$success" ]; then
+              diff_file="$DIFF_DIR/diff_$filename"
+              echo "Generating diff for $filename"
+              # ksdiffで差分画像を生成。※ ksdiffがheadless環境での画像出力に対応している必要があります
+              ksdiff --output "$diff_file" "$success" "$failed"
+              if [ ! -f "$diff_file" ]; then
+                echo "Failed to generate diff for $filename"
+                exit 1
+              fi
+            else
+              echo "Success snapshot not found for $filename, skipping."
+            fi
           done
-          # GitHub Actions の出力変数にセット（複数行の場合はヘアドキュメント形式で）
-          echo "snapshot_info<<EOF" >> $GITHUB_OUTPUT
-          echo -e "$snapshot_info" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          shell: bash
 
-      - name: Comment on PR with snapshot image paths
-#        if: ${{ failure() && github.event_name == 'pull_request' }}
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const snapshotInfo = `\n${{ steps.collect_snapshots.outputs.snapshot_info }}\n`;
-            const commentBody = `### Snapshot Comparison Details\n${snapshotInfo}`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: commentBody,
-            });
+          # 成功ディレクトリ内の各ファイルに対して処理を実施
+          for success in "$SUCCESS_DIR"/*; do
+            echo "Failed file: $success"
+            filename=$(basename "$success")
+            echo "Filename: $filename"
+            success="$SUCCESS_DIR/$filename"
+            echo "Success file: $success" 
+          done
+        shell: bash
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
-#        if: failure()
+        if: failure()
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: snapshot-diff
