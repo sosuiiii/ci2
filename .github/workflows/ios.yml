@@ -71,7 +71,7 @@ jobs:
         run: |
           set -e
           # ※ 以下のパスは環境に合わせて修正してください
-          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure"
+          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           mkdir -p "$DIFF_DIR"
