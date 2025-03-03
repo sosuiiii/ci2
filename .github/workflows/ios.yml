@@ -91,6 +91,8 @@ jobs:
               if [ ! -f "$diff_file" ]; then
                 echo "Failed to generate diff for $filename"
                 exit 1
+              else
+                echo "Success: $diff_file"
               fi
             else
               echo "Success snapshot not found for $filename, skipping."
