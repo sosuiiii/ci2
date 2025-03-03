@@ -68,39 +68,43 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-# 複数の失敗したスナップショットファイルに対して、成功時と同名の画像と比較してdiff画像を生成する
-      - name: Generate diff images for all failed snapshots using ksdiff
-        if: failure()
-        run: |
-          set -e
-          # ※ 以下のパスは環境に合わせて修正してください
-          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
-          SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
-          DIFF_DIR="$(pwd)/artifacts/diffs"
-          mkdir -p "$DIFF_DIR"
-          
-          # 失敗ディレクトリ内の各ファイルに対して処理を実施
-          for failed in "$FAILED_DIR"/*; do
-            filename=$(basename "$failed")
-            success="$SUCCESS_DIR/$filename"
-            if [ -f "$success" ]; then
-              diff_file="$DIFF_DIR/diff_$filename"
-              echo "Generating diff for $filename"
-              # 例: old.png と new.png の差分画像を diff.png として出力
-              echo "before: compare"
-              compare "$success" "$failed" "$diff_file"
-              echo "after compare"
-              if [ ! -f "$diff_file" ]; then
-                echo "Failed to generate diff for $filename"
-                exit 1
+        # 複数の失敗したスナップショットファイルに対して、成功時と同名の画像と比較してdiff画像を生成する
+        - name: Generate diff images for all failed snapshots using ksdiff
+          if: failure()
+          run: |
+            set -e
+            # ※ 以下のパスは環境に合わせて修正してください
+            FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
+            SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
+            DIFF_DIR="$(pwd)/artifacts/diffs"
+            mkdir -p "$DIFF_DIR"
+            
+            # 失敗ディレクトリ内の各ファイルに対して処理を実施
+            for failed in "$FAILED_DIR"/*; do
+              filename=$(basename "$failed")
+              success="$SUCCESS_DIR/$filename"
+              if [ -f "$success" ]; then
+                diff_file="$DIFF_DIR/diff_$filename"
+                echo "Generating diff for $filename"
+                echo "before: compare"
+                # compare の標準エラー出力をキャプチャする
+                output=$(compare "$success" "$failed" "$diff_file" 2>&1) || { 
+                  echo "Error while comparing $filename:" 
+                  echo "$output" 
+                  exit 1
+                }
+                echo "after compare"
+                if [ ! -f "$diff_file" ]; then
+                  echo "Failed to generate diff for $filename"
+                  exit 1
+                else
+                  echo "Success: $diff_file"
+                fi
               else
-                echo "Success: $diff_file"
+                echo "Success snapshot not found for $filename, skipping."
               fi
-            else
-              echo "Success snapshot not found for $filename, skipping."
-            fi
-          done
-        shell: bash
+            done
+          shell: bash
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
