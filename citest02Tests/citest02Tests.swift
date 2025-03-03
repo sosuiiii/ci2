@@ -16,7 +16,24 @@ struct citest02Tests {
     @MainActor
     @Test func example() async throws {
         assertSnapshot(
-            of: Text("テストaa").referenceFrame(),
+            of: Text("テスト").referenceFrame(),
+            as: .wait(
+                for: 0,  // スクショまでの時間
+                on: .image(
+                    precision: 0.9999,  // 一致率
+                    layout: .fixed(
+                        width: 375,
+                        height: 667
+                    )
+                )
+            ),
+            record: false,  // CI環境で既存のスナップショットと比較する場合はfalse
+            file: SnapshotFilePath.path
+        )
+    }
+    @Test func example2() async throws {
+        assertSnapshot(
+            of: Text("テスト").referenceFrame(),
             as: .wait(
                 for: 0,  // スクショまでの時間
                 on: .image(
