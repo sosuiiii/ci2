@@ -73,37 +73,34 @@ jobs:
         if: failure()
         run: |
           set -e
-          # ※ 以下のパスは環境に合わせて修正してください
           FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           mkdir -p "$DIFF_DIR"
-          
-          # 失敗ディレクトリ内の各ファイルに対して処理を実施
+      
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
-            diff_file="$DIFF_DIR/diff_$filename"
-            echo "Generating diff for $filename"
-            echo "before: compare"
-            # compare の標準エラー出力をキャプチャする
-            output=$(compare "$success" "$failed" "$diff_file" 2>&1) || { 
-              echo "Error while comparing $filename:" 
-              echo "$output" 
-              exit 1
-            }
-            echo "after compare"
-            if [ ! -f "$diff_file" ]; then
-               echo "Failed to generate diff for $filename"
-               exit 1
-               else
-                 echo "Success: $diff_file"
-               fi
+              diff_file="$DIFF_DIR/diff_$filename"
+              echo "Generating diff for $filename"
+              echo "before: compare"
+              # compare 実行後の出力と終了コードをキャプチャ
+              output=$(compare "$success" "$failed" "$diff_file" 2>&1)
+              exit_code=$?
+              echo "after compare"
+              # diff ファイルが生成されていなければエラーと判断
+              if [ $exit_code -ne 0 ] && [ ! -f "$diff_file" ]; then
+                echo "Error while comparing $filename:"
+                echo "$output"
+                exit 1
+              else
+                echo "Success: $diff_file"
+              fi
             else
-               echo "Success snapshot not found for $filename, skipping."
+              echo "Success snapshot not found for $filename, skipping."
             fi
-            done
+          done
         shell: bash
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
