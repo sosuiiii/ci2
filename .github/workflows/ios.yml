@@ -85,8 +85,8 @@ jobs:
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
               echo "before: compare"
-              # compare 実行後の出力と終了コードをキャプチャ
-              output=$(compare "$success" "$failed" "$diff_file" 2>&1)
+              # 非ゼロ終了コードを無視して、出力と終了コードをキャプチャ
+              output=$(compare "$success" "$failed" "$diff_file" 2>&1) || true
               exit_code=$?
               echo "after compare"
               # diff ファイルが生成されていなければエラーと判断
