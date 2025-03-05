@@ -31,6 +31,7 @@ struct citest02Tests {
             file: SnapshotFilePath.path
         )
     }
+    @MainActor
     @Test func example2() async throws {
         assertSnapshot(
             of: Text("テストa").referenceFrame(),
