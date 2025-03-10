@@ -105,7 +105,7 @@ jobs:
         run: |
           {
             echo 'ENCODED_IMAGES<<EOF'
-            for file in ./artifacts/diffs/*.png; do
+            for file in /Users/runner/work/ci2/ci2/artifacts/diffs/*.png; do
               [ -e "$file" ] || continue
               echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
               echo ""
