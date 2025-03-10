@@ -68,7 +68,6 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-        # 複数の失敗したスナップショットファイルに対して、成功時と同名の画像と比較してdiff画像を生成する
       - name: Generate diff images for all failed snapshots using ksdiff
         if: failure()
         run: |
@@ -85,11 +84,9 @@ jobs:
               diff_file="$DIFF_DIR/diff_$filename"
               echo "Generating diff for $filename"
               echo "before: compare"
-              # 非ゼロ終了コードを無視して、出力と終了コードをキャプチャ
               output=$(compare "$success" "$failed" "$diff_file" 2>&1) || true
               exit_code=$?
               echo "after compare"
-              # diff ファイルが生成されていなければエラーと判断
               if [ $exit_code -ne 0 ] && [ ! -f "$diff_file" ]; then
                 echo "Error while comparing $filename:"
                 echo "$output"
@@ -101,7 +98,27 @@ jobs:
               echo "Success snapshot not found for $filename, skipping."
             fi
           done
-        shell: bash
+
+      - name: Encode diff images and comment on PR
+        if: failure()
+        id: encode_diff_images
+        run: |
+          echo "ENCODED_IMAGES<<EOF" >> $GITHUB_OUTPUT
+          for file in ./artifacts/diffs/*.png; do
+            [ -e "$file" ] || continue
+            echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))" >>       $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+          done
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR with snapshot diffs
+        if: steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
+      
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
 
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
