@@ -103,13 +103,15 @@ jobs:
         if: failure()
         id: encode_diff_images
         run: |
-          echo "ENCODED_IMAGES<<EOF" >> $GITHUB_OUTPUT
-          for file in ./artifacts/diffs/*.png; do
-            [ -e "$file" ] || continue
-            echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))" >>       $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-          done
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo 'ENCODED_IMAGES<<EOF'
+            for file in ./artifacts/diffs/*.png; do
+              [ -e "$file" ] || continue
+              echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
+              echo ""
+            done
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR with snapshot diffs
         if: steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
