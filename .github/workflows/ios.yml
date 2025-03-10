@@ -99,27 +99,12 @@ jobs:
             fi
           done
 
-      # 生成した複数のdiff画像をアーティファクトとしてアップロード
-      - name: Upload diff artifacts
-        if: failure()
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
-        with:
-          name: snapshot-diff
-          path: artifacts/diffs
-
-      - name: Cache VRT snapshots
-        if: always()
-        uses: actions/cache/save@v3
-        id: vrt-cache
-        with:
-          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
-          key: "snapshot-test"
-
       - name: Encode diff images and comment on PR
-        if: always()
+        if: failure()
         id: encode_diff_images
         run: |
           {
+            echo "test"
             echo 'ENCODED_IMAGES<<EOF'
             for file in ./artifacts/diffs/*.png; do
               [ -e "$file" ] || continue
@@ -137,4 +122,20 @@ jobs:
             🚨 **Snapshotテストで差分が発生しています** 🚨
       
             ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+
+      # 生成した複数のdiff画像をアーティファクトとしてアップロード
+      - name: Upload diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: snapshot-diff
+          path: artifacts/diffs
+
+      - name: Cache VRT snapshots
+        if: always()
+        uses: actions/cache/save@v3
+        id: vrt-cache
+        with:
+          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
+          key: "snapshot-test"
 #          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
