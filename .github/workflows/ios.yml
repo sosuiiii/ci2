@@ -100,7 +100,7 @@ jobs:
           done
 
       - name: Encode diff images and comment on PR
-        if: failure()
+        if: success()
         id: encode_diff_images
         run: |
           {
