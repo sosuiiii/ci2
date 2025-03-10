@@ -104,14 +104,18 @@ jobs:
         id: encode_diff_images
         run: |
           {
-            echo "test"
-            echo 'ENCODED_IMAGES<<EOF'
-            for file in ./artifacts/diffs/*.png; do
-              [ -e "$file" ] || continue
-              echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
-              echo ""
-            done
-            echo EOF
+            if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
+              echo "ENCODED_IMAGES<<EOF"
+              for file in ./artifacts/diffs/*.png; do
+                echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
+                echo ""
+              done
+              echo "EOF"
+            else
+              echo "ENCODED_IMAGES<<EOF"
+              echo "No diff images found in ./artifacts/diffs/"
+              echo "EOF"
+            fi
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment on PR with snapshot diffs
