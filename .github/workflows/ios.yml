@@ -68,73 +68,6 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-#      - name: Generate diff images for all failed snapshots using ksdiff
-#        if: failure()
-#        run: |
-#          set -e
-#          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
-#          SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
-#          DIFF_DIR="$(pwd)/artifacts/diffs"
-#          mkdir -p "$DIFF_DIR"
-#      
-#          for failed in "$FAILED_DIR"/*; do
-#            filename=$(basename "$failed")
-#            success="$SUCCESS_DIR/$filename"
-#            if [ -f "$success" ]; then
-#              diff_file="$DIFF_DIR/diff_$filename"
-#              echo "Generating diff for $filename"
-#              echo "before: compare"
-#              output=$(compare "$success" "$failed" "$diff_file" 2>&1) || true
-#              exit_code=$?
-#              echo "after compare"
-#              if [ $exit_code -ne 0 ] && [ ! -f "$diff_file" ]; then
-#                echo "Error while comparing $filename:"
-#                echo "$output"
-#                exit 1
-#              else
-#                echo "Success: $diff_file"
-#              fi
-#            else
-#              echo "Success snapshot not found for $filename, skipping."
-#            fi
-#          done
-#
-#      - name: Encode images and output
-#        if: failure()
-#        id: encode_diff_images
-#        run: |
-#          delimiter=$(openssl rand -hex 8)
-#          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
-#            {
-#              echo "ENCODED_IMAGES<<$delimiter"
-#              for file in ./artifacts/diffs/*.png; do
-#                encoded=$(base64 -i "$file")
-#                echo "![Diff Image $(basename "$file")](data:image/png;base64,$encoded)"
-#                echo ""
-#              done
-#              echo "$delimiter"
-#            } >> "$GITHUB_OUTPUT"
-#          else
-#            echo "ENCODED_IMAGES=" >> "$GITHUB_OUTPUT"
-#          fi
-#
-#      - name: Comment on PR with snapshot diffs
-#        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-#        uses: marocchino/sticky-pull-request-comment@v2
-#        with:
-#          message: |
-#            🚨 **Snapshotテストで差分が発生しています** 🚨
-#      
-#            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
-
-      # 生成した複数のdiff画像をアーティファクトとしてアップロード
-#      - name: Upload diff artifacts
-#        if: failure()
-#        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
-#        with:
-#          name: snapshot-diff
-#          path: artifacts/diffs
-
       - name: Generate diff images for all failed snapshots using ksdiff
         if: failure()
         run: |
@@ -160,27 +93,31 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      # issueコメントAPIで画像をアップロードするスクリプト
       - name: Upload images to GitHub and Comment on PR
         if: failure()
         env:
-          GITHUB_TOKEN: ${{ secrets.MY_PAT }} # PATを利用します
+          GITHUB_TOKEN: ${{ secrets.MY_PAT }} # PATを設定
         run: |
           IMAGE_MARKDOWN=""
           for file in artifacts/diffs/*.png; do
-            # GitHub APIでissueコメントに画像をアップロード
-            upload_url=$(curl -s -X POST \
+            response=$(curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               -H "Content-Type: $(file -b --mime-type "$file")" \
               --data-binary @"$file" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              | jq -r '.body' | grep -oP '(https://user-images.githubusercontent.com/[^)]+)')
-            
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments")
+      
+            upload_url=$(echo "$response" | jq -r '.body' | grep -Eo 'https://user-images.githubusercontent.com/[^)]+' | head -n1)
+      
+            if [ -z "$upload_url" ]; then
+              echo "Failed to upload $file"
+              exit 1
+            fi
+      
             IMAGE_MARKDOWN="${IMAGE_MARKDOWN}![$(basename "$file")]($upload_url)\n\n"
           done
       
-          # 画像リンクをまとめてPRコメントに投稿
+          # MarkdownでPRにまとめてコメント
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
