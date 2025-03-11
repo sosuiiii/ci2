@@ -149,7 +149,7 @@ jobs:
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/diff_$filename"
-              compare "$success" "$failed" "$diff_file" || true
+              output=$(compare "$success" "$failed" "$diff_file" 2>&1) || true
             fi
           done
 
@@ -160,15 +160,42 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Comment on PR with link to Artifact
+      - name: Encode images and output
         if: failure()
+        id: encode_diff_images
+        run: |
+          delimiter=$(openssl rand -hex 8)
+          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
+            {
+              echo "ENCODED_IMAGES<<$delimiter"
+              for file in ./artifacts/diffs/*.png; do
+                encoded=$(base64 -i "$file")
+                echo "**$(basename "$file")**"
+                echo ""
+                echo "![Diff Image $(basename "$file")](data:image/png;base64,$encoded)"
+                echo ""
+              done
+              echo "$delimiter"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "ENCODED_IMAGES=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on PR with snapshot diffs and Artifact link
+        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          token: ${{ secrets.MY_PAT }} # PATを使用
+          token: ${{ secrets.MY_PAT }} # ←ここが修正済みのポイント
           message: |
             🚨 **Snapshotテストで差分が発生しています** 🚨
       
-            差分画像は[こちらのArtifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)からダウンロードできます。
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+      
+            ---
+      
+            [📥 画像をまとめてダウンロード（Artifacts）](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+
+
 
 
       - name: Cache VRT snapshots
