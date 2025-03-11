@@ -120,6 +120,11 @@ jobs:
               done
               echo "EOF" >> "$GITHUB_OUTPUT"
             }
+            
+            # デバッグ用に出力内容を表示
+            echo "---- GITHUB_OUTPUT の内容 ----"
+            cat "$GITHUB_OUTPUT"
+            echo "-------------------------------"
           else
             echo "Diff 画像が見つかりませんでした。"
             {
