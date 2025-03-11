@@ -136,13 +136,14 @@ jobs:
           fi
         shell: /bin/bash -e {0}
 
-      - name: Comment on PR with snapshot diffs
-        if: github.event_name == 'pull_request' && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: |
-            🚨 **Snapshotテストで差分が発生しています** 🚨
-            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+       - name: Comment on PR with snapshot diffs
+         if: ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES != null && steps.encode_diff_images.outputs.ENCODED_IMAGES != '' }}
+         uses: marocchino/sticky-pull-request-comment@v2
+         with:
+           message: |
+             🚨 **Snapshotテストで差分が発生しています** 🚨
+       
+             ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
 
 #      - name: Comment on commit for push event
 #        if: github.event_name == 'push' && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
