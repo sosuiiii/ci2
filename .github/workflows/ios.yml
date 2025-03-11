@@ -99,24 +99,40 @@ jobs:
             fi
           done
 
-      - name: Encode diff images and comment on PR
-        if: 　always()
+      - name: Debug and encode diff images
+        if: failure()
         id: encode_diff_images
         run: |
-          {
-            if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
+          echo "【DEBUG】現在のディレクトリ: $(pwd)"
+          echo "【DEBUG】artifacts/diffs 内のファイル一覧:"
+          ls -la ./artifacts/diffs/
+      
+          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
+            echo "Diff 画像が見つかりました。"
+            # デバッグ用に各ファイル名も出力
+            for file in ./artifacts/diffs/*.png; do
+              echo "Found: $(basename "$file")"
+            done
+      
+            {
               echo "ENCODED_IMAGES<<EOF"
               for file in ./artifacts/diffs/*.png; do
-                echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
+                # base64 のオプション -i を外してみる
+                encoded=$(base64 "$file")
+                echo "![Diff Image $(basename "$file")](data:image/png;base64,${encoded})"
                 echo ""
               done
               echo "EOF"
-            else
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "Diff 画像が見つかりませんでした。"
+            {
               echo "ENCODED_IMAGES<<EOF"
               echo "No diff images found in ./artifacts/diffs/"
               echo "EOF"
-            fi
-          } >> "$GITHUB_OUTPUT"
+            } >> "$GITHUB_OUTPUT"
+          fi
+        shell: /bin/bash -e {0}
 
       - name: Comment on PR with snapshot diffs
         if: steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
