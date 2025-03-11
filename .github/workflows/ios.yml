@@ -99,6 +99,9 @@ jobs:
             fi
           done
 
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
       - name: Encode diff images and comment on PR
         if: always()
         id: encode_diff_images
@@ -129,13 +132,30 @@ jobs:
           else
             echo "Diff 画像が見つかりませんでした。"
             {
-              echo "ENCODED_IMAGES<<EOF"
-              echo "No diff images found in ./artifacts/diffs/"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+              echo "ENCODED_IMAGES<<EOF" >> "$GITHUB_OUTPUT"
+              echo "No diff images found in ./artifacts/diffs/" >> "$GITHUB_OUTPUT"
+              echo "EOF" >> "$GITHUB_OUTPUT"
+            }
           fi
         shell: /bin/bash -e {0}
 
+      - name: Comment on PR with snapshot diffs
+        if: github.event_name == 'pull_request' && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
+
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+
+      - name: Comment on commit for push event
+        if: github.event_name == 'push' && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
+        uses: marocchino/commit-comment@v1
+        with:
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
+
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
         if: failure()
