@@ -136,8 +136,8 @@ jobs:
 #          path: artifacts/diffs
 
       - name: Generate diff images for all failed snapshots using ksdiff
-      if: failure()
-      run: |
+        if: failure()
+        run: |
           set -e
           FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
@@ -145,47 +145,47 @@ jobs:
           mkdir -p "$DIFF_DIR"
       
           for failed in "$FAILED_DIR"/*; do
-          filename=$(basename "$failed")
-          success="$SUCCESS_DIR/$filename"
-          if [ -f "$success" ]; then
+            filename=$(basename "$failed")
+            success="$SUCCESS_DIR/$filename"
+            if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/diff_$filename"
               compare "$success" "$failed" "$diff_file" || true
-          fi
+            fi
           done
 
       - name: Upload diff images as Artifact
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
       # issueコメントAPIで画像をアップロードするスクリプト
       - name: Upload images to GitHub and Comment on PR
-      if: failure()
-      env:
+        if: failure()
+        env:
           GITHUB_TOKEN: ${{ secrets.MY_PAT }} # PATを利用します
-      run: |
+        run: |
           IMAGE_MARKDOWN=""
           for file in artifacts/diffs/*.png; do
-          # GitHub APIでissueコメントに画像をアップロード
-          upload_url=$(curl -s -X POST \
+            # GitHub APIでissueコメントに画像をアップロード
+            upload_url=$(curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               -H "Content-Type: $(file -b --mime-type "$file")" \
               --data-binary @"$file" \
               "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
               | jq -r '.body' | grep -oP '(https://user-images.githubusercontent.com/[^)]+)')
-          
-          IMAGE_MARKDOWN="${IMAGE_MARKDOWN}![$(basename "$file")]($upload_url)\n\n"
+            
+            IMAGE_MARKDOWN="${IMAGE_MARKDOWN}![$(basename "$file")]($upload_url)\n\n"
           done
       
           # 画像リンクをまとめてPRコメントに投稿
           curl -X POST \
-          -H "Authorization: token $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-          -d "{\"body\": \"🚨 **Snapshotテストで差分が発生しています** 🚨\\n\\n${IMAGE_MARKDOWN}\"}"
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "{\"body\": \"🚨 **Snapshotテストで差分が発生しています** 🚨\\n\\n${IMAGE_MARKDOWN}\"}"
 
       - name: Cache VRT snapshots
         if: always()
