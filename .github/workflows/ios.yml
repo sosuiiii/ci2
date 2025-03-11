@@ -160,19 +160,22 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Encode images and output
+      - name: Resize and encode images
         if: failure()
         id: encode_diff_images
         run: |
           delimiter=$(openssl rand -hex 8)
+          mkdir -p ./artifacts/diffs_resized
           if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
             {
               echo "ENCODED_IMAGES<<$delimiter"
               for file in ./artifacts/diffs/*.png; do
-                encoded=$(base64 -i "$file")
+                resized="./artifacts/diffs_resized/$(basename "$file")"
+                convert "$file" -resize 500 "$resized"
+                encoded=$(base64 -i "$resized")
                 echo "**$(basename "$file")**"
                 echo ""
-                echo "![Diff Image $(basename "$file")](data:image/png;base64,$encoded)"
+                echo "![Diff Image](data:image/png;base64,$encoded)"
                 echo ""
               done
               echo "$delimiter"
