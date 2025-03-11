@@ -122,7 +122,7 @@ jobs:
               echo "EOF" >> "$GITHUB_OUTPUT"
             }
             
-            # デバッグ用に出力内容を表示
+            # デバッグ用：出力内容を表示
             echo "---- GITHUB_OUTPUT の内容 ----"
             cat "$GITHUB_OUTPUT"
             echo "-------------------------------"
@@ -147,12 +147,16 @@ jobs:
 
       - name: Comment on commit for push event
         if: github.event_name == 'push' && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-        uses: marocchino/commit-comment@v1
+        uses: actions/github-script@v6
         with:
-          message: |
-            🚨 **Snapshotテストで差分が発生しています** 🚨
-
-            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+          script: |
+            github.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `🚨 **Snapshotテストで差分が発生しています** 🚨
+              ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}`
+            })
       # 生成した複数のdiff画像をアーティファクトとしてアップロード
       - name: Upload diff artifacts
         if: failure()
