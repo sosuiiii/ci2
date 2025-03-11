@@ -99,42 +99,29 @@ jobs:
             fi
           done
 
-      - name: Encode diff images and comment on PR
-        if: always()
+      - name: Encode images and output
         id: encode_diff_images
         run: |
-          echo "【DEBUG】現在のディレクトリ: $(pwd)"
-          echo "【DEBUG】artifacts/diffs 内のファイル一覧:"
-          ls -la ./artifacts/diffs/
-      
-          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
-            echo "Diff 画像が見つかりました。"
+          delimiter=$(openssl rand -hex 8)
+          {
+            echo "ENCODED_IMAGES<<$delimiter"
             for file in ./artifacts/diffs/*.png; do
-              echo "Found: $(basename "$file")"
+              encoded=$(base64 -i "$file")
+              echo "![Diff Image $(basename "$file")](data:image/png;base64,$encoded)"
+              echo ""
             done
-            {
-              echo "ENCODED_IMAGES<<EOF" >> "$GITHUB_OUTPUT"
-              for file in ./artifacts/diffs/*.png; do
-                encoded=$(cat "$file" | base64)
-                echo "![Diff Image $(basename "$file")](data:image/png;base64,${encoded})" >> "$GITHUB_OUTPUT"
-                echo "" >> "$GITHUB_OUTPUT"
-              done
-              echo "EOF" >> "$GITHUB_OUTPUT"
-            }
-            
-            # デバッグ用：出力内容を表示
-            echo "---- GITHUB_OUTPUT の内容 ----"
-            cat "$GITHUB_OUTPUT"
-            echo "-------------------------------"
-          else
-            echo "Diff 画像が見つかりませんでした。"
-            {
-              echo "ENCODED_IMAGES<<EOF" >> "$GITHUB_OUTPUT"
-              echo "No diff images found in ./artifacts/diffs/" >> "$GITHUB_OUTPUT"
-              echo "EOF" >> "$GITHUB_OUTPUT"
-            }
-          fi
-        shell: /bin/bash -e {0}
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR with snapshot diffs
+        if: ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES != '' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
+      
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+
 
 #       - name: Comment on PR with snapshot diffs
 #         if: ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES != null && steps.encode_diff_images.outputs.ENCODED_IMAGES != '' }}
