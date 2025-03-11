@@ -111,16 +111,15 @@ jobs:
             for file in ./artifacts/diffs/*.png; do
               echo "Found: $(basename "$file")"
             done
-      
             {
-              echo "ENCODED_IMAGES<<EOF"
+              echo "ENCODED_IMAGES<<EOF" >> "$GITHUB_OUTPUT"
               for file in ./artifacts/diffs/*.png; do
                 encoded=$(cat "$file" | base64)
-                echo "![Diff Image $(basename "$file")](data:image/png;base64,${encoded})"
-                echo ""
+                echo "![Diff Image $(basename "$file")](data:image/png;base64,${encoded})" >> "$GITHUB_OUTPUT"
+                echo "" >> "$GITHUB_OUTPUT"
               done
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
+              echo "EOF" >> "$GITHUB_OUTPUT"
+            }
           else
             echo "Diff 画像が見つかりませんでした。"
             {
