@@ -99,9 +99,6 @@ jobs:
             fi
           done
 
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
       - name: Encode diff images and comment on PR
         if: always()
         id: encode_diff_images
