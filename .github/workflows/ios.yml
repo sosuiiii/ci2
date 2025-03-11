@@ -160,7 +160,7 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Resize and encode images
+      - name: Resize and encode images correctly (no line-wrap)
         if: failure()
         id: encode_diff_images
         run: |
@@ -172,7 +172,7 @@ jobs:
               for file in ./artifacts/diffs/*.png; do
                 resized="./artifacts/diffs_resized/$(basename "$file")"
                 convert "$file" -resize 500 "$resized"
-                encoded=$(base64 -i "$resized")
+                encoded=$(base64 -i "$resized" | tr -d '\n') # ←ここが重要
                 echo "**$(basename "$file")**"
                 echo ""
                 echo "![Diff Image](data:image/png;base64,$encoded)"
