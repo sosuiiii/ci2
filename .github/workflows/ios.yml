@@ -109,7 +109,6 @@ jobs:
       
           if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
             echo "Diff 画像が見つかりました。"
-            # デバッグ用に各ファイル名も出力
             for file in ./artifacts/diffs/*.png; do
               echo "Found: $(basename "$file")"
             done
@@ -117,8 +116,8 @@ jobs:
             {
               echo "ENCODED_IMAGES<<EOF"
               for file in ./artifacts/diffs/*.png; do
-                # base64 のオプション -i を外してみる
-                encoded=$(base64 "$file")
+                # cat 経由で base64 に渡す
+                encoded=$(cat "$file" | base64)
                 echo "![Diff Image $(basename "$file")](data:image/png;base64,${encoded})"
                 echo ""
               done
