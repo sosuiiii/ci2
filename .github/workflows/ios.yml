@@ -140,7 +140,7 @@ jobs:
 #          name: snapshot-diffs
 #          path: artifacts/diffs/*.png
 
-      - name: Upload diff images to Issue and comment on PR
+      - name: Upload diff images via Markdown API and comment on PR
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -148,29 +148,26 @@ jobs:
           COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
       
           for file in artifacts/diffs/*.png; do
-            echo "Uploading $file to GitHub Issue..."
+            echo "Uploading $file to GitHub via Markdown API..."
             
-            # 1️⃣ GitHub の Markdown API を使って画像をアップロード
-            UPLOAD_RESPONSE=$(curl -s -X POST \
+            # 1️⃣ GitHubのMarkdown APIを使って画像をアップロード
+            RESPONSE=$(curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: $(file -b --mime-type "$file")" \
-              --data-binary @"$file" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments")
-      
-            # 2️⃣ 画像のURLを抽出
-            IMAGE_URL=$(echo "$UPLOAD_RESPONSE" | jq -r '.html_url')
-      
+              -H "Accept: application/vnd.github.v3+json" \
+              -d "{\"text\":\"![Uploading $file...](https://github.com)\"}" \
+              "https://api.github.com/markdown")
+            
+            IMAGE_URL=$(echo "$RESPONSE" | grep -o 'https://user-images.githubusercontent.com[^)]*' | head -n1)
+            
             if [[ -z "$IMAGE_URL" || "$IMAGE_URL" == "null" ]]; then
               echo "Failed to upload $file"
               exit 1
             fi
-
-            # 3️⃣ コメント本文に画像を追加
+            
             COMMENT_BODY+="![Diff Image $(basename "$file")]($IMAGE_URL)\n\n"
           done
       
-          # 4️⃣ 画像リンクを含むコメントをPRに投稿
+          # 2️⃣ PRにコメントを投稿
           ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
       
           curl -X POST \
