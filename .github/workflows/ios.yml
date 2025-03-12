@@ -133,12 +133,12 @@ jobs:
 #
 #            詳細な画像はこちらからダウンロードしてください。  
 #            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-      - name: Upload diff images as Artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: snapshot-diffs
-          path: artifacts/diffs/*.png
+#      - name: Upload diff images as Artifact
+#        if: failure()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: snapshot-diffs
+#          path: artifacts/diffs/*.png
 
       - name: Upload diff images to Issue comment
         if: failure()
