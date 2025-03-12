@@ -95,51 +95,62 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Upload diff images to Issue and retrieve URLs
+      - name: Create GitHub Release (if not exists)
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_NAME="snapshot-diff-release"
+          EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r ".[] | select(.name==\"$RELEASE_NAME\") | .id")
+      
+          if [ -z "$EXISTING_RELEASE" ]; then
+            echo "Creating new release..."
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases" \
+              -d "{\"tag_name\": \"snapshot-diff\", \"name\": \"$RELEASE_NAME\", \"body\": \"Snapshot diff images\"}")
+            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          else
+            echo "Release already exists. Using ID: $EXISTING_RELEASE"
+            RELEASE_ID=$EXISTING_RELEASE
+          fi
+      
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+
+      - name: Upload diff images to GitHub Release
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for file in artifacts/diffs/*.png; do
+            echo "Uploading $file to GitHub Release..."
+            curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$(basename "$file")" \
+              --data-binary @$file
+          done
+
+      - name: Comment on PR with snapshot diffs from Release
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/snapshot-diff"
       
           for file in artifacts/diffs/*.png; do
-            echo "Uploading $file to GitHub Issue..."
-            
-            # 1️⃣ 画像をGitHub Issueコメントにアップロード
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              -d "{\"body\": \"Uploading image: $(basename "$file")\"}")
-      
-            # 2️⃣ 投稿されたコメントのURLを取得
-            COMMENT_URL=$(echo "$RESPONSE" | jq -r '.html_url')
-      
-            if [[ -z "$COMMENT_URL" || "$COMMENT_URL" == "null" ]]; then
-              echo "Failed to create issue comment for $file"
-              exit 1
-            fi
-      
-            # 3️⃣ コメント内の画像URLを取得
-            sleep 5 # GitHubが画像を処理するのを待つ
-            IMAGE_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$COMMENT_URL" | grep -o 'https://user-images.githubusercontent.com[^")]*' | head -n1)
-      
-            if [[ -z "$IMAGE_URL" || "$IMAGE_URL" == "null" ]]; then
-              echo "Failed to retrieve uploaded image URL for $file"
-              exit 1
-            fi
-      
+            IMAGE_URL="$RELEASE_URL/$(basename "$file")"
             COMMENT_BODY+="![Diff Image $(basename "$file")]($IMAGE_URL)\n\n"
           done
-      
-          # 4️⃣ PRに画像URLを投稿
-          ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
       
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -d "{\"body\": $ESCAPED_BODY}"
+            -d "{\"body\": \"$COMMENT_BODY\"}"
 
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
