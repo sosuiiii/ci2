@@ -1,8 +1,6 @@
 name: iOS starter workflow
 
 on:
-#  push:
-#    branches: [ "**" ]
   pull_request:
     branches: [ "**" ]
 
@@ -14,36 +12,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.0.app
+
       - name: Print Xcode version
         run: xcodebuild -version
+
       - name: Print available simulators
         run: xcrun simctl list
+
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
           default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
           echo $default | cat >default
           echo Using default scheme: $default
+
       - name: Build
         env:
           scheme: ${{ 'default' }}
           platform: ${{ 'iOS Simulator' }}
         run: |
-          # xcrun xctrace returns via stderr, not the expected stdout (see https://developer.apple.com/forums/thread/663959)
           device=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//"`
           if [ $scheme = default ]; then scheme=$(cat default); fi
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
+
       - name: Restore VRT snapshots
         uses: actions/cache@v3
         id: restore-vrt
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
-#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
+
       - name: Check if images exist in SnapshotFilePath folder
         run: |
           count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
@@ -61,7 +64,6 @@ jobs:
           scheme: ${{ 'default' }}
           platform: ${{ 'iOS Simulator' }}
         run: |
-          # xcrun xctrace returns via stderr, not the expected stdout (see https://developer.apple.com/forums/thread/663959)
           device=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//"`
           if [ $scheme = default ]; then scheme=$(cat default); fi
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
@@ -76,7 +78,7 @@ jobs:
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           mkdir -p "$DIFF_DIR"
-      
+
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
@@ -93,36 +95,44 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Upload images to GitHub and Comment on PR
+      - name: Resize and encode images correctly
         if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.MY_PAT }} # PATを設定
+        id: encode_diff_images
         run: |
-          IMAGE_MARKDOWN=""
-          for file in artifacts/diffs/*.png; do
-            response=$(curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: $(file -b --mime-type "$file")" \
-              --data-binary @"$file" \
-              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments")
-      
-            upload_url=$(echo "$response" | jq -r '.body' | grep -Eo 'https://user-images.githubusercontent.com/[^)]+' | head -n1)
-      
-            if [ -z "$upload_url" ]; then
-              echo "Failed to upload $file"
-              exit 1
-            fi
-      
-            IMAGE_MARKDOWN="${IMAGE_MARKDOWN}![$(basename "$file")]($upload_url)\n\n"
-          done
-      
-          # MarkdownでPRにまとめてコメント
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -d "{\"body\": \"🚨 **Snapshotテストで差分が発生しています** 🚨\\n\\n${IMAGE_MARKDOWN}\"}"
+          delimiter=$(openssl rand -hex 8)
+          mkdir -p ./artifacts/diffs_resized
+          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
+            {
+              echo "ENCODED_IMAGES<<$delimiter"
+              for file in ./artifacts/diffs/*.png; do
+                resized="./artifacts/diffs_resized/$(basename "$file")"
+                convert "$file" -resize 500 "$resized"
+                encoded=$(base64 -i "$resized" | tr -d '\n')
+                echo "**$(basename "$file")**"
+                echo ""
+                echo "![Diff Image](data:image/png;base64,$encoded)"
+                echo ""
+              done
+              echo "$delimiter"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "ENCODED_IMAGES=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on PR with snapshot diffs and Artifact link
+        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          token: ${{ secrets.MY_PAT }}
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
+
+            （縮小表示のため画像が小さいですが、差分は以下で確認できます）
+
+            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+
+            詳細な画像はこちらからダウンロードしてください。  
+            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
 
       - name: Cache VRT snapshots
         if: always()
@@ -131,4 +141,3 @@ jobs:
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
-#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
