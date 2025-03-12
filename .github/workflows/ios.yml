@@ -133,34 +133,35 @@ jobs:
 #
 #            詳細な画像はこちらからダウンロードしてください。  
 #            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-      - name: Upload images to PR comments and get image URLs
+      - name: Upload diff images as Artifact
         if: failure()
-        id: upload_images
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: artifacts/diffs/*.png
+
+      - name: Upload diff images to Issue comment
+        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          IMAGE_URLS=""
+          COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
+
           for file in artifacts/diffs/*.png; do
-            upload_response=$(curl -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
+            URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              -H "Content-Type: $(file -b --mime-type "$file")" \
-              --data-binary @"$file" \
-              "https://uploads.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              | jq -r '.body' \
-              | grep -o 'https://user-images.githubusercontent.com[^)]*')
+              -X POST "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -F "body=@$file;type=$(file -b --mime-type "$file")" \
+              | jq -r '.body' | grep -Eo 'https://user-images.githubusercontent.com[^)]+' | head -n1)
       
-            IMAGE_MARKDOWN="${IMAGE_MARKDOWN}![$(basename "$file")]($upload_response)\n\n"
+            COMMENT_BODY+="![Diff Image $(basename "$file")]($COMMENT_BODY)\n\n"
           done
 
-      - name: Comment on PR with uploaded images
-        if: failure()
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          message: |
-            🚨 **Snapshotテストで差分が発生しています** 🚨
-            ${{ env.IMAGE_MARKDOWN }}
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "{\"body\": \"$COMMENT_BODY\"}"
 
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
