@@ -119,21 +119,56 @@ jobs:
             echo "ENCODED_IMAGES=" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Comment on PR with snapshot diffs and Artifact link
-        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          token: ${{ secrets.MY_PAT }}
-          message: |
-            🚨 **Snapshotテストで差分が発生しています** 🚨
+#      - name: Comment on PR with snapshot diffs and Artifact link
+#        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
+#        uses: marocchino/sticky-pull-request-comment@v2
+#        with:
+#          token: ${{ secrets.MY_PAT }}
+#          message: |
+#            🚨 **Snapshotテストで差分が発生しています** 🚨
+#
+#            （縮小表示のため画像が小さいですが、差分は以下で確認できます）
+#
+#            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+#
+#            詳細な画像はこちらからダウンロードしてください。  
+#            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+      - name: Upload diff images to GitHub Issue and comment on PR
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.MY_PAT }}
+        run: |
+          IMAGE_MARKDOWN=""
+          for file in artifacts/diffs/*.png; do
+            # Issueに画像コメントを投稿
+            upload_response=$(curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -d "{\"body\":\"![Diff Image $(basename "$file")]($(basename "$file"))\"}")
+      
+            # コメントから画像のURLを抽出
+            comment_url=$(echo "$upload_response" | jq -r '.html_url')
+      
+            # コメントをAPIから取得し直して画像の正確なURLを取得
+            comment_body=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$comment_url" | grep -o       'https://user-images.githubusercontent.com[^)]*')
+      
+            if [ -z "$comment_body" ]; then
+              echo "Failed to upload $file"
+              exit 1
+            fi
+      
+            IMAGE_MARKDOWN+="**$(basename "$file")**\n\n![$(basename "$file")]($comment_body)\n\n"
+          done
+      
+          # まとめてPRコメントを投稿
+          curl -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            -d "{\"body\": \"🚨 **Snapshotテストで差分が発生しています** 🚨\\n\\n${IMAGE_MARKDOWN}\"}"
 
-            （縮小表示のため画像が小さいですが、差分は以下で確認できます）
-
-            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
-
-            詳細な画像はこちらからダウンロードしてください。  
-            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-
+      # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
         if: always()
         uses: actions/cache/save@v3
