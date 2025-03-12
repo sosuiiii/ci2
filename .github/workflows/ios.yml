@@ -139,11 +139,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/snapshot-diff"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
       
           for file in artifacts/diffs/*.png; do
             IMAGE_URL="$RELEASE_URL/$(basename "$file")"
-            COMMENT_BODY+="![Diff Image $(basename "$file")]($IMAGE_URL)\n\n"
+            COMMENT_BODY+="<img src=\"$IMAGE_URL\" width=\"300\">\n\n"
           done
       
           curl -X POST \
