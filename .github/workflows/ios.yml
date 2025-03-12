@@ -95,52 +95,7 @@ jobs:
           name: snapshot-diffs
           path: artifacts/diffs/*.png
 
-      - name: Resize and encode images correctly
-        if: failure()
-        id: encode_diff_images
-        run: |
-          delimiter=$(openssl rand -hex 8)
-          mkdir -p ./artifacts/diffs_resized
-          if ls ./artifacts/diffs/*.png >/dev/null 2>&1; then
-            {
-              echo "ENCODED_IMAGES<<$delimiter"
-              for file in ./artifacts/diffs/*.png; do
-                resized="./artifacts/diffs_resized/$(basename "$file")"
-                convert "$file" -resize 500 "$resized"
-                encoded=$(base64 -i "$resized" | tr -d '\n')
-                echo "**$(basename "$file")**"
-                echo ""
-                echo "![Diff Image](data:image/png;base64,$encoded)"
-                echo ""
-              done
-              echo "$delimiter"
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "ENCODED_IMAGES=" >> "$GITHUB_OUTPUT"
-          fi
-
-#      - name: Comment on PR with snapshot diffs and Artifact link
-#        if: failure() && steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-#        uses: marocchino/sticky-pull-request-comment@v2
-#        with:
-#          token: ${{ secrets.MY_PAT }}
-#          message: |
-#            🚨 **Snapshotテストで差分が発生しています** 🚨
-#
-#            （縮小表示のため画像が小さいですが、差分は以下で確認できます）
-#
-#            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
-#
-#            詳細な画像はこちらからダウンロードしてください。  
-#            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-#      - name: Upload diff images as Artifact
-#        if: failure()
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: snapshot-diffs
-#          path: artifacts/diffs/*.png
-
-      - name: Upload diff images to Issue comment and retrieve URLs
+      - name: Upload diff images to Issue and retrieve URLs
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -149,20 +104,25 @@ jobs:
       
           for file in artifacts/diffs/*.png; do
             echo "Uploading $file to GitHub Issue..."
-      
-            # 1️⃣ 画像をGitHub Issue コメントとして追加
+            
+            # 1️⃣ 画像をGitHub Issueコメントにアップロード
             RESPONSE=$(curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              -d "{\"body\": \"![Uploading $(basename "$file")...](https://github.com)\"}")
+              -d "{\"body\": \"Uploading image: $(basename "$file")\"}")
       
-            # 2️⃣ IssueのコメントURLを取得
+            # 2️⃣ 投稿されたコメントのURLを取得
             COMMENT_URL=$(echo "$RESPONSE" | jq -r '.html_url')
       
-            # 3️⃣ 画像のURLを取得（GitHubが画像をホストするのを待つ）
-            sleep 5
-            IMAGE_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$COMMENT_URL" | grep -o 'https://user-images.githubusercontent.com[^)]*' | head -n1)
+            if [[ -z "$COMMENT_URL" || "$COMMENT_URL" == "null" ]]; then
+              echo "Failed to create issue comment for $file"
+              exit 1
+            fi
+      
+            # 3️⃣ コメント内の画像URLを取得
+            sleep 5 # GitHubが画像を処理するのを待つ
+            IMAGE_URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$COMMENT_URL" | grep -o 'https://user-images.githubusercontent.com[^")]*' | head -n1)
       
             if [[ -z "$IMAGE_URL" || "$IMAGE_URL" == "null" ]]; then
               echo "Failed to retrieve uploaded image URL for $file"
@@ -172,7 +132,7 @@ jobs:
             COMMENT_BODY+="![Diff Image $(basename "$file")]($IMAGE_URL)\n\n"
           done
       
-          # 4️⃣ 画像URLをPRコメントに追加
+          # 4️⃣ PRに画像URLを投稿
           ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
       
           curl -X POST \
