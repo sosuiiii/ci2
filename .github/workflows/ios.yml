@@ -148,13 +148,15 @@ jobs:
           COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
 
           for file in artifacts/diffs/*.png; do
-            URL=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              -X POST "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              -F "body=@$file;type=$(file -b --mime-type "$file")" \
-              | jq -r '.body' | grep -Eo 'https://user-images.githubusercontent.com[^)]+' | head -n1)
-      
-            COMMENT_BODY+="![Diff Image $(basename "$file")]($COMMENT_BODY)\n\n"
+              "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              -d "{\"body\": \"![Diff Image $(basename \"$file\")]()\"}")
+
+            URL=$(echo "$RESPONSE" | jq -r '.body' | grep -Eo 'https://user-images.githubusercontent.com[^)]+' | head -n1)
+
+            COMMENT_BODY+="![Diff Image $(basename \"$file\")]($URL)\n\n"
           done
 
           curl -X POST \
