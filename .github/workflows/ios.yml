@@ -77,14 +77,21 @@ jobs:
           FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
-          mkdir -p "$DIFF_DIR"
-
+          SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
+          FAILED_OUT_DIR="$(pwd)/artifacts/failed"
+      
+          mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
+      
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/diff_$filename"
               compare "$success" "$failed" "$diff_file" || true
+      
+              # 成功・失敗画像もコピー
+              cp "$success" "$SUCCESS_OUT_DIR/$filename"
+              cp "$failed" "$FAILED_OUT_DIR/$filename"
             fi
           done
 
@@ -119,18 +126,41 @@ jobs:
       
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
-      - name: Upload diff images to GitHub Release
+      - name: Upload success, failed, and diff images to GitHub Release
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for file in artifacts/diffs/*.png; do
-            echo "Uploading $file to GitHub Release..."
+          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
+      
+          # 成功画像のアップロード
+          for file in artifacts/success/*.png; do
+            echo "Uploading success image: $file"
             curl -s -X POST \
               -H "Authorization: token $GITHUB_TOKEN" \
               -H "Content-Type: application/octet-stream" \
-              "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$(basename "$file")" \
-              --data-binary @$file
+              "$UPLOAD_URL?name=success_$(basename "$file")" \
+              --data-binary @"$file"
+          done
+      
+          # 失敗画像のアップロード
+          for file in artifacts/failed/*.png; do
+            echo "Uploading failed image: $file"
+            curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              "$UPLOAD_URL?name=failed_$(basename "$file")" \
+              --data-binary @"$file"
+          done
+      
+          # 差分画像のアップロード
+          for file in artifacts/diffs/*.png; do
+            echo "Uploading diff image: $file"
+            curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              "$UPLOAD_URL?name=$(basename "$file")" \
+              --data-binary @"$file"
           done
 
       - name: Comment on PR with structured snapshot diffs from Release
