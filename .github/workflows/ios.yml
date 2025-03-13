@@ -133,27 +133,79 @@ jobs:
               --data-binary @$file
           done
 
-      - name: Comment on PR with snapshot diffs from Release
+#      - name: Comment on PR with snapshot diffs from Release
+#        if: failure()
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
+#          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
+#      
+#          for file in artifacts/diffs/*.png; do
+#            IMAGE_URL="$RELEASE_URL/$(basename "$file")"
+#            COMMENT_BODY+="<img src=\"$IMAGE_URL\" width=\"300\">\n\n"
+#          done
+#      
+#          # JSONとして正しくエスケープする
+#          ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
+#      
+#          curl -X POST \
+#            -H "Authorization: token $GITHUB_TOKEN" \
+#            -H "Accept: application/vnd.github+json" \
+#            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+#            -d "{\"body\": $ESCAPED_BODY}"
+
+      - name: Generate Markdown table for PR comment
         if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: generate_markdown
         run: |
-          COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
+          # Releasesに保存された画像のURLベース
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
+          
+          # Cacheから取得する画像（既存の成功スナップショット）
+          EXISTING_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
       
-          for file in artifacts/diffs/*.png; do
-            IMAGE_URL="$RELEASE_URL/$(basename "$file")"
-            COMMENT_BODY+="<img src=\"$IMAGE_URL\" width=\"300\">\n\n"
+          # 差分画像のあるディレクトリ
+          DIFF_DIR="./artifacts/diffs"
+      
+          # PRにコメントするMarkdownを生成
+          echo "COMMENT_MARKDOWN<<EOF" >> $GITHUB_ENV
+          echo "### 画像名" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "| 既存 | 差分 | 新規 |" >> $GITHUB_ENV
+          echo "| -- | -- | -- |" >> $GITHUB_ENV
+      
+          for diff_file in "$DIFF_DIR"/*.png; do
+            filename=$(basename "$diff_file")
+      
+            # 既存画像のURL
+            existing_url="$RELEASE_URL/$filename"
+      
+            # 差分画像のURL（Artifactsにアップロードしたものを使用）
+            diff_url="$RELEASE_URL/$filename"
+      
+            # 新規画像（今は未アップロードなので空白）
+            new_url="(未アップロード)"
+      
+            echo "| <img src=\"$existing_url\" width=\"300\"> | <img src=\"$diff_url\" width=\"300\"> | $new_url |" >> $GITHUB_ENV
           done
       
-          # JSONとして正しくエスケープする
-          ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Comment on PR with formatted snapshot diffs
+        if: failure()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          token: ${{ secrets.MY_PAT }}
+          message: |
+            🚨 **Snapshotテストで差分が発生しています** 🚨
       
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -d "{\"body\": $ESCAPED_BODY}"
+            ${{ env.COMMENT_MARKDOWN }}
+      
+            ---
+            🔗 **詳細画像はこちらから**  
+            [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+
 
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
