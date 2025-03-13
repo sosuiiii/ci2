@@ -138,9 +138,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨\n\n"
-          COMMENT_BODY+="以下に画像の差分を表示します。\n\n"
-          COMMENT_BODY+="詳細な画像はこちらからダウンロードしてください。\n"
+          COMMENT_BODY="🚨 **Snapshotテストで差分が発生しています** 🚨"
+          COMMENT_BODY+="\n\n以下に画像の差分を表示します。\n"
+          COMMENT_BODY+="\n詳細な画像はこちらからダウンロードしてください。\n"
           COMMENT_BODY+="[📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)\n\n"
       
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
@@ -149,22 +149,24 @@ jobs:
           for file in artifacts/diffs/*.png; do
             IMAGE_URL="$RELEASE_URL/$(basename "$file")"
             
-            COMMENT_BODY+="### 画像${COUNT}\n\n"
+            COMMENT_BODY+="\n### 画像${COUNT}\n\n"
             COMMENT_BODY+="| 既存 | 差分 | 新規 |\n"
             COMMENT_BODY+="| -- | -- | -- |\n"
-            COMMENT_BODY+="| 空 | <img src=\"$IMAGE_URL\" width=\"300\"> | 空 |\n\n"
+            COMMENT_BODY+="| 空 | <img src=\"$IMAGE_URL\" width=\"300\"> | 空 |\n"
       
             COUNT=$((COUNT + 1))
           done
       
-          # JSONとして正しくエスケープする
-          ESCAPED_BODY=$(echo "$COMMENT_BODY" | jq -Rs .)
-      
+          # JSONエスケープを適用せず、実際の改行を保持したままコメントを作成
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            -d "{\"body\": $ESCAPED_BODY}"
+            --data-binary @- <<EOF
+          {
+            "body": $(jq -Rs . <<< "$COMMENT_BODY")
+          }
+          EOF
 
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
