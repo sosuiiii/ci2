@@ -140,25 +140,37 @@ jobs:
         run: |
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
       
-          # コメント本文を printf で改行付きで構築
-          COMMENT_BODY=$(printf "🚨 **Snapshotテストで差分が発生しています** 🚨\n\n")
-          COMMENT_BODY+=$(printf "以下に画像の差分を表示します。\n\n")
-          COMMENT_BODY+=$(printf "詳細な画像はこちらからダウンロードしてください。\n")
-          COMMENT_BODY+=$(printf "[📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)\n\n")
-      
+          # コメント本文を printf で改行付きで構築（printf は自動で改行を入れる）
+          COMMENT_BODY=$(cat <<EOF
+          🚨 **Snapshotテストで差分が発生しています** 🚨
+
+          以下に画像の差分を表示します。
+
+          詳細な画像はこちらからダウンロードしてください。
+          [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+
+          EOF
+          )
+
           COUNT=1
           for file in artifacts/diffs/*.png; do
             IMAGE_URL="$RELEASE_URL/$(basename "$file")"
-      
-            COMMENT_BODY+=$(printf "### 画像${COUNT}\n\n")
-            COMMENT_BODY+=$(printf "| 既存 | 差分 | 新規 |\n")
-            COMMENT_BODY+=$(printf "| -- | -- | -- |\n")
-            COMMENT_BODY+=$(printf "| 空 | <img src=\"$IMAGE_URL\" width=\"300\"> | 空 |\n\n")
-      
+
+            COMMENT_BODY+=$(cat <<EOF
+
+          ### 画像${COUNT}
+
+          | 既存 | 差分 | 新規 |
+          | -- | -- | -- |
+          | 空 | <img src="${IMAGE_URL}" width="300"> | 空 |
+
+          EOF
+          )
+
             COUNT=$((COUNT + 1))
           done
-      
-          # JSONとして正しくエスケープし、GitHub API に送信
+
+          # JSONエスケープを適用し GitHub API に送信
           curl -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
