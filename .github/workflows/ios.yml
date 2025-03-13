@@ -182,16 +182,16 @@ jobs:
           EOF
           )
     
-              COUNT=1
               for file in artifacts/diffs/*.png; do
                 BASENAME=$(basename "$file")
+                FILENAME=${BASENAME#diff_}  # "diff_" を削除して元のファイル名を取得
                 DIFF_IMAGE_URL="$RELEASE_URL/$BASENAME"
-                SUCCESS_IMAGE_URL="$RELEASE_URL/success_${BASENAME#diff_}"
-                FAILED_IMAGE_URL="$RELEASE_URL/failed_${BASENAME#diff_}"
+                SUCCESS_IMAGE_URL="$RELEASE_URL/success_${FILENAME}"
+                FAILED_IMAGE_URL="$RELEASE_URL/failed_${FILENAME}"
     
                 COMMENT_BODY+=$(cat <<EOF
     
-          ### 画像${COUNT}
+          ### ${FILENAME}
     
           | 既存（成功時） | 差分 | 新規（失敗時） |
           | -- | -- | -- |
@@ -199,7 +199,6 @@ jobs:
     
           EOF
           )
-                COUNT=$((COUNT + 1))
               done
     
               # JSONエスケープを適用し GitHub API に送信
