@@ -193,7 +193,7 @@ jobs:
     
           ### ${FILENAME}
     
-          | 既存（成功時） | 差分 | 新規（失敗時） |
+          | 既存 | 差分 | 今回の変更 |
           | -- | -- | -- |
           | <img src="${SUCCESS_IMAGE_URL}" width="300"> | <img src="${DIFF_IMAGE_URL}" width="300"> | <img src="${FAILED_IMAGE_URL}" width="300"> |
     
