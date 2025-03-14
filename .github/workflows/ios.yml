@@ -228,23 +228,37 @@ jobs:
       
           CHECK_ID=$(echo "$CHECK_RUN" | jq -r '.id')
       
-          # コメント用変数
+          # コメント用変数（JSONエスケープ対応）
           CHECK_TITLE="🚨 Snapshotテストで差分が発生しました 🚨"
           CHECK_SUMMARY="🚨 **Snapshotテストで差分が発生しました** 🚨\n\n以下に詳細な画像の差分を表示します。\n\n"
       
-          # Annotations（行ごとのコメント）
+          # GitHub Checks の `annotations`
           ANNOTATIONS=()
       
           for file in artifacts/diffs/*.png; do
             BASENAME=$(basename "$file")
             FILENAME=${BASENAME#diff_}
       
-            # 画像のBase64エンコード
-            DIFF_B64=$(base64 "$file" | tr -d '\n')
-            SUCCESS_B64=$(base64 "artifacts/success/$FILENAME" | tr -d '\n')
-            FAILED_B64=$(base64 "artifacts/failed/$FILENAME" | tr -d '\n')
+            # macOS の `base64` は `-w 0` ではなく `tr -d '\n'` を使う
+            if [ -f "$file" ]; then
+              DIFF_B64=$(base64 "$file" | tr -d '\n')
+            else
+              DIFF_B64=""
+            fi
       
-            # GitHub Checks に表示するMarkdownテーブルを作成（Annotations用）
+            if [ -f "artifacts/success/$FILENAME" ]; then
+              SUCCESS_B64=$(base64 "artifacts/success/$FILENAME" | tr -d '\n')
+            else
+              SUCCESS_B64=""
+            fi
+      
+            if [ -f "artifacts/failed/$FILENAME" ]; then
+              FAILED_B64=$(base64 "artifacts/failed/$FILENAME" | tr -d '\n')
+            else
+              FAILED_B64=""
+            fi
+      
+            # 画像テーブル
             IMAGE_TABLE="### ${FILENAME}\n\n"
             IMAGE_TABLE+="| 既存（成功時） | 差分 | 新規（失敗時） |\n"
             IMAGE_TABLE+="| -- | -- | -- |\n"
@@ -261,12 +275,15 @@ jobs:
               '{path: $path, message: $message, annotation_level: $annotation_level, title: $title}')")
           done
       
+          # JSONエスケープ（エラー回避）
+          ESCAPED_SUMMARY=$(jq -Rs . <<< "$CHECK_SUMMARY")
+      
           # GitHub Checks を更新（Annotations を含める）
           curl -s -X PATCH \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "$GITHUB_API/$CHECK_ID" \
-            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --arg title "$CHECK_TITLE" --arg summary "$CHECK_SUMMARY" \
+            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --arg title "$CHECK_TITLE" --arg summary "$ESCAPED_SUMMARY" \
               --argjson annotations "[${ANNOTATIONS[*]}]" \
               '{status: $status, conclusion: $conclusion, output: {title: $title, summary: $summary, annotations: $annotations}}')"
       
