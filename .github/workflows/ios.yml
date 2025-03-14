@@ -238,10 +238,10 @@ jobs:
             BASENAME=$(basename "$file")
             FILENAME=${BASENAME#diff_}
       
-            # 画像をBase64エンコード
-            DIFF_B64=$(base64 -w 0 "$file")
-            SUCCESS_B64=$(base64 -w 0 "artifacts/success/$FILENAME")
-            FAILED_B64=$(base64 -w 0 "artifacts/failed/$FILENAME")
+            # macOS の base64 コマンドを使用（-w 0 を削除）
+            DIFF_B64=$(base64 "$file" | tr -d '\n')
+            SUCCESS_B64=$(base64 "artifacts/success/$FILENAME" | tr -d '\n')
+            FAILED_B64=$(base64 "artifacts/failed/$FILENAME" | tr -d '\n')
       
             # GitHub Checks に表示するMarkdownテーブルを作成
             CHECK_SUMMARY+="### ${FILENAME}\n\n"
