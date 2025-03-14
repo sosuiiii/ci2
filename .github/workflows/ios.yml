@@ -141,6 +141,7 @@ jobs:
 #          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       - name: Create GitHub Issue for Snapshot Failures
+        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

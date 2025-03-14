@@ -27,14 +27,38 @@
 		5344E3FA2D6F2CC400DDDBC4 /* citest02Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = citest02Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		53B0D05D2D75CE89000FE184 /* Exceptions for "citest02Tests" folder in "citest02Tests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				__Snapshots__/citest02Tests/example.1.png,
+			);
+			target = 5344E3F92D6F2CC400DDDBC4 /* citest02Tests */;
+		};
+		53B0D06D2D7844E0000FE184 /* Exceptions for "citest02" folder in "citest02" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Snapshots/__Snapshots__/SnapshotFilePath/example.1.png,
+				Snapshots/__Snapshots__/SnapshotFilePath/example2.1.png,
+			);
+			target = 5344E3E92D6F2CC300DDDBC4 /* citest02 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5344E3EC2D6F2CC300DDDBC4 /* citest02 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				53B0D06D2D7844E0000FE184 /* Exceptions for "citest02" folder in "citest02" target */,
+			);
 			path = citest02;
 			sourceTree = "<group>";
 		};
 		5344E3FD2D6F2CC400DDDBC4 /* citest02Tests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				53B0D05D2D75CE89000FE184 /* Exceptions for "citest02Tests" folder in "citest02Tests" target */,
+			);
 			path = citest02Tests;
 			sourceTree = "<group>";
 		};
