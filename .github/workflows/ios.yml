@@ -117,57 +117,48 @@ jobs:
           path: artifacts/failed/*.png
 
       - name: 比較用ブランチ作成 & 画像をコミット
-        if: failure()
         run: |
-          # Git のユーザー設定（必要に応じて）
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          # 新しい orphan ブランチを作成
           git checkout --orphan comparison-screenshots
           git reset --hard
-          # artifacts ディレクトリを追加
           git add artifacts
           git commit -m "Add snapshot test screenshots for comparison"
-          # ブランチを強制プッシュ
           git push origin comparison-screenshots --force
 
       - name: コメント本文を生成
-        if: failure()
         id: generate_comment
         shell: bash
         run: |
-          # リポジトリ情報と新しいブランチ名から画像 URL のベースを生成
           REPO=${GITHUB_REPOSITORY}
           BRANCH=comparison-screenshots
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
-          COMMENT="### Snapshot Test Results\n"
-
-          # success ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Success:**\n"
-          for file in artifacts/success/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/success/${filename})\n"
-          done
-
-          # failed ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Failed:**\n"
-          for file in artifacts/failed/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/failed/${filename})\n"
-          done
-
-          # diffs ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Diffs:**\n"
-          for file in artifacts/diffs/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/diffs/${filename})\n"
-          done
-
-          echo "$COMMENT" > comment.md
-          echo "::set-output name=body::$(cat comment.md)"
+          
+          COMMENT="<table>
+          <thead>
+          <tr>
+          <th>既存</th>
+          <th>差分</th>
+          <th>今回</th>
+          </tr>
+          </thead>
+          <tbody>
+          "
+                    for file in artifacts/success/*.png; do
+                      filename=$(basename "$file")
+                      COMMENT+="<tr>
+          <td><img src=\"${BASE_URL}/success/${filename}\" width=\"300\"></td>
+          <td><img src=\"${BASE_URL}/diffs/${filename}\" width=\"300\"></td>
+          <td><img src=\"${BASE_URL}/failed/${filename}\" width=\"300\"></td>
+          </tr>
+          "
+                    done
+                    COMMENT+="</tbody>
+          </table>"
+                    echo "$COMMENT" > comment.md
+                    echo "::set-output name=body::$(cat comment.md)"
 
       - name: PR にコメント投稿
-        if: failure()
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
