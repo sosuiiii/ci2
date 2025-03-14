@@ -141,15 +141,24 @@ jobs:
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       - name: Create GitHub Issue for Snapshot Failures
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating GitHub Issue..."
-          ISSUE_JSON=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test --json number,url || echo "{}")
           
-          ISSUE_NUMBER=$(echo "$ISSUE_JSON" | jq -r '.number // empty')
-          ISSUE_URL=$(echo "$ISSUE_JSON" | jq -r '.url // empty')
+          ISSUE_OUTPUT=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --label snapshot-test --repo ${{ github.repository }} 2>&1)
 
-          if [[ -z "$ISSUE_NUMBER" || -z "$ISSUE_URL" ]]; then
+          if [[ $? -ne 0 ]]; then
             echo "Error: Failed to create issue"
+            echo "$ISSUE_OUTPUT"
+            exit 1
+          fi
+
+          # 作成した Issue の URL を取得
+          ISSUE_URL=$(gh issue list --repo ${{ github.repository }} --state open --limit 1 --json url --jq '.[0].url')
+
+          if [[ -z "$ISSUE_URL" ]]; then
+            echo "Error: Could not retrieve issue URL"
             exit 1
           fi
 
