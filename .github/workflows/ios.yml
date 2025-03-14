@@ -222,17 +222,14 @@ jobs:
           CHECK_RUN=$(curl -s -X POST \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            $GITHUB_API \
-            -d "{
-              \"name\": \"$CHECK_NAME\",
-              \"head_sha\": \"${{ github.event.pull_request.head.sha }}\",
-              \"status\": \"in_progress\"
-            }")
+            "$GITHUB_API" \
+            -d "$(jq -n --arg name "$CHECK_NAME" --arg head_sha "${{ github.event.pull_request.head.sha }}" \
+              '{name: $name, head_sha: $head_sha, status: "in_progress"}')")
       
           CHECK_ID=$(echo "$CHECK_RUN" | jq -r '.id')
       
-          # コメント用変数
-          CHECK_SUMMARY="🚨 **Snapshotテストで差分が発生しました** 🚨\n\n"
+          # コメント用変数（JSONエスケープ対応）
+          CHECK_SUMMARY=$(jq -n --arg text "🚨 **Snapshotテストで差分が発生しました** 🚨\n\n" '{summary: $text}')
       
           for file in artifacts/diffs/*.png; do
             BASENAME=$(basename "$file")
@@ -243,11 +240,13 @@ jobs:
             SUCCESS_B64=$(base64 "artifacts/success/$FILENAME" | tr -d '\n')
             FAILED_B64=$(base64 "artifacts/failed/$FILENAME" | tr -d '\n')
       
-            # GitHub Checks に表示するMarkdownテーブルを作成
-            CHECK_SUMMARY+="### ${FILENAME}\n\n"
-            CHECK_SUMMARY+="| 既存（成功時） | 差分 | 新規（失敗時） |\n"
-            CHECK_SUMMARY+="| -- | -- | -- |\n"
-            CHECK_SUMMARY+="| <img src=\"data:image/png;base64,${SUCCESS_B64}\" width=\"300\"> | <img src=\"data:image/png;base64,${DIFF_B64}\" width=\"300\"> | <img       src=\"data:image/png;base64,${FAILED_B64}\" width=\"300\"> |\n\n"
+            # GitHub Checks に表示するMarkdownテーブルを作成（JSON対応）
+            IMAGE_TABLE="### ${FILENAME}\n\n"
+            IMAGE_TABLE+="| 既存（成功時） | 差分 | 新規（失敗時） |\n"
+            IMAGE_TABLE+="| -- | -- | -- |\n"
+            IMAGE_TABLE+="| ![成功](data:image/png;base64,${SUCCESS_B64}) | ![差分](data:image/png;base64,${DIFF_B64}) | ![失敗](data:image/png;base64,${FAILED_B64}) |\n\n"
+      
+            CHECK_SUMMARY=$(echo "$CHECK_SUMMARY" | jq --arg img_table "$IMAGE_TABLE" '.summary += $img_table')
           done
       
           # GitHub Checks を更新（結果を登録）
@@ -255,14 +254,8 @@ jobs:
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "$GITHUB_API/$CHECK_ID" \
-            -d "{
-              \"status\": \"completed\",
-              \"conclusion\": \"failure\",
-              \"output\": {
-                \"title\": \"$CHECK_NAME\",
-                \"summary\": \"$CHECK_SUMMARY\"
-              }
-            }"
+            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --argjson output "$CHECK_SUMMARY" \
+              '{status: $status, conclusion: $conclusion, output: $output}')"
       
           echo "::endgroup::"
 
