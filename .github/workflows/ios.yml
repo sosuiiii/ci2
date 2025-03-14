@@ -208,6 +208,64 @@ jobs:
                 "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
                 -d "$(jq -Rs --arg body "$COMMENT_BODY" '{body: $body}' <<< "")"
 
+      - name: Report Snapshot Diffs via GitHub Checks
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::group::Processing snapshot images for GitHub Checks"
+      
+          CHECK_NAME="Snapshot Diff Report"
+          GITHUB_API="https://api.github.com/repos/${{ github.repository }}/check-runs"
+      
+          # GitHub Checks の開始
+          CHECK_RUN=$(curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            $GITHUB_API \
+            -d "{
+              \"name\": \"$CHECK_NAME\",
+              \"head_sha\": \"${{ github.event.pull_request.head.sha }}\",
+              \"status\": \"in_progress\"
+            }")
+      
+          CHECK_ID=$(echo "$CHECK_RUN" | jq -r '.id')
+      
+          # コメント用変数
+          CHECK_SUMMARY="🚨 **Snapshotテストで差分が発生しました** 🚨\n\n"
+      
+          for file in artifacts/diffs/*.png; do
+            BASENAME=$(basename "$file")
+            FILENAME=${BASENAME#diff_}
+      
+            # 画像をBase64エンコード
+            DIFF_B64=$(base64 -w 0 "$file")
+            SUCCESS_B64=$(base64 -w 0 "artifacts/success/$FILENAME")
+            FAILED_B64=$(base64 -w 0 "artifacts/failed/$FILENAME")
+      
+            # GitHub Checks に表示するMarkdownテーブルを作成
+            CHECK_SUMMARY+="### ${FILENAME}\n\n"
+            CHECK_SUMMARY+="| 既存（成功時） | 差分 | 新規（失敗時） |\n"
+            CHECK_SUMMARY+="| -- | -- | -- |\n"
+            CHECK_SUMMARY+="| <img src=\"data:image/png;base64,${SUCCESS_B64}\" width=\"300\"> | <img src=\"data:image/png;base64,${DIFF_B64}\" width=\"300\"> | <img       src=\"data:image/png;base64,${FAILED_B64}\" width=\"300\"> |\n\n"
+          done
+      
+          # GitHub Checks を更新（結果を登録）
+          curl -s -X PATCH \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API/$CHECK_ID" \
+            -d "{
+              \"status\": \"completed\",
+              \"conclusion\": \"failure\",
+              \"output\": {
+                \"title\": \"$CHECK_NAME\",
+                \"summary\": \"$CHECK_SUMMARY\"
+              }
+            }"
+      
+          echo "::endgroup::"
+
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
         if: always()
