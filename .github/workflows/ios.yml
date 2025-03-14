@@ -164,53 +164,35 @@ jobs:
 
           echo "Issue successfully created!"
 
-
-      - name: Upload success, failed, and diff images to GitHub Issue
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 必要なツールをインストール
         run: |
-          echo "Creating GitHub Issue..."
-          
-          # Issue を作成
-          ISSUE_NUMBER=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test | awk '{print $NF}')
+          sudo apt-get update
+          sudo apt-get install -y jq curl
 
-          if [[ -z "$ISSUE_NUMBER" ]]; then
-            echo "Error: Issue creation failed"
-            exit 1
-          fi
+      - name: 画像をGitHub Issueにアップロード
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=1  # 画像をアップロードするIssueの番号を指定
+          PR_NUMBER=${{ github.event.pull_request.number }}
 
-          ISSUE_URL="https://github.com/${{ github.repository }}/issues/${ISSUE_NUMBER}"
-          echo "Issue created: $ISSUE_URL"
-
-          # 画像を imgur にアップロード（GitHub API では直接アップロード不可のため、外部サービスを利用）
-          upload_image() {
-            local image_path="$1"
-            local image_url=$(curl -s -F "image=@${image_path}" "https://api.imgur.com/3/upload" -H "Authorization: Client-ID YOUR_IMGUR_CLIENT_ID" | jq -r '.data.link')
-            echo "$image_url"
-          }
-
-          # Markdown の画像リストを作成
-          echo "## Snapshot Test Failures" > snapshot_summary.md
-          echo "- Issue URL: $ISSUE_URL" >> snapshot_summary.md
+          # 画像アップロード用のコメントを作成
+          echo "Uploading images to issue #$ISSUE_NUMBER..."
 
           for file in artifacts/success/*.png; do
-            IMAGE_URL=$(upload_image "$file")
+            IMAGE_URL=$(gh issue comment $ISSUE_NUMBER --body "![]($(gh issue upload $ISSUE_NUMBER $file))")
             echo "✅ Success: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
 
           for file in artifacts/failed/*.png; do
-            IMAGE_URL=$(upload_image "$file")
+            IMAGE_URL=$(gh issue comment $ISSUE_NUMBER --body "![]($(gh issue upload $ISSUE_NUMBER $file))")
             echo "❌ Failed: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
 
           for file in artifacts/diffs/*.png; do
-            IMAGE_URL=$(upload_image "$file")
+            IMAGE_URL=$(gh issue comment $ISSUE_NUMBER --body "![]($(gh issue upload $ISSUE_NUMBER $file))")
             echo "🔄 Diff: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
-
-          # GitHub Issue にコメントとして画像を追加
-          gh issue comment "$ISSUE_NUMBER" --body "$(cat snapshot_summary.md)" --repo ${{ github.repository }}
 
 #      - name: Upload success, failed, and diff images to GitHub Release
 #        if: failure()
