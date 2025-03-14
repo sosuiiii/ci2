@@ -164,18 +164,18 @@ jobs:
 
           echo "Issue successfully created!"
 
-      - name: 必要なツールをインストール
-        if: failure()
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl
+#      - name: 必要なツールをインストール
+#        if: failure()
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y jq curl
 
       - name: 画像をGitHub Issueにアップロード
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_NUMBER=1  # 画像をアップロードするIssueの番号を指定
+          ISSUE_NUMBER=7  # 画像をアップロードするIssueの番号を指定
           PR_NUMBER=${{ github.event.pull_request.number }}
 
           # 画像アップロード用のコメントを作成
