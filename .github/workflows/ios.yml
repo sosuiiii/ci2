@@ -138,35 +138,35 @@ jobs:
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           
           comment=$(cat <<'EOF'
-<table>
-  <thead>
-    <tr>
-      <th>既存</th>
-      <th>差分</th>
-      <th>今回</th>
-    </tr>
-  </thead>
-  <tbody>
-EOF
-)
+          <table>
+            <thead>
+              <tr>
+                <th>既存</th>
+                <th>差分</th>
+                <th>今回</th>
+              </tr>
+            </thead>
+            <tbody>
+          EOF
+          )
           found=0
           for file in artifacts/success/*.png; do
-            found=1
-            filename=$(basename "$file")
-            comment+=$(cat <<EOF
-    <tr>
-      <td><img src="${BASE_URL}/success/${filename}" width="300"></td>
-      <td><img src="${BASE_URL}/diffs/${filename}" width="300"></td>
-      <td><img src="${BASE_URL}/failed/${filename}" width="300"></td>
-    </tr>
-EOF
-)
+          found=1
+          filename=$(basename "$file")
+          comment+=$(cat <<EOF
+              <tr>
+                <td><img src="${BASE_URL}/success/${filename}" width="300"></td>
+                <td><img src="${BASE_URL}/diffs/${filename}" width="300"></td>
+                <td><img src="${BASE_URL}/failed/${filename}" width="300"></td>
+              </tr>
+          EOF
+          )
           done
           if [ $found -eq 0 ]; then
             comment+="    <tr><td colspan='3'>No images found</td></tr>"
           fi
           comment+="  </tbody>
-</table>"
+          </table>"
           echo "$comment" > comment.md
           echo "::set-output name=body::$(cat comment.md)"
 
