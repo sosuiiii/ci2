@@ -165,11 +165,13 @@ jobs:
           echo "Issue successfully created!"
 
       - name: 必要なツールをインストール
+        if: failure()
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
 
       - name: 画像をGitHub Issueにアップロード
+        if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
