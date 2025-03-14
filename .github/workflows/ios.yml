@@ -163,50 +163,50 @@ jobs:
               --data-binary @"$file"
           done
 
-      - name: Comment on PR with structured snapshot diffs from Release
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
-      
-          # コメント本文の構築
-          COMMENT_BODY=$(cat <<EOF
-          🚨 **Snapshotテストで差分が発生しています** 🚨
-    
-          以下に画像の差分を表示します。
-    
-          詳細な画像はこちらからダウンロードしてください。
-          [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-    
-          EOF
-          )
-    
-              for file in artifacts/diffs/*.png; do
-                BASENAME=$(basename "$file")
-                FILENAME=${BASENAME#diff_}  # "diff_" を削除して元のファイル名を取得
-                DIFF_IMAGE_URL="$RELEASE_URL/$BASENAME"
-                SUCCESS_IMAGE_URL="$RELEASE_URL/success_${FILENAME}"
-                FAILED_IMAGE_URL="$RELEASE_URL/failed_${FILENAME}"
-    
-                COMMENT_BODY+=$(cat <<EOF
-    
-          ### ${FILENAME}
-    
-          | 既存 | 差分 | 今回の変更 |
-          | -- | -- | -- |
-          | <img src="${SUCCESS_IMAGE_URL}" width="300"> | <img src="${DIFF_IMAGE_URL}" width="300"> | <img src="${FAILED_IMAGE_URL}" width="300"> |
-    
-          EOF
-          )
-              done
-    
-              # JSONエスケープを適用し GitHub API に送信
-              curl -X POST \
-                -H "Authorization: token $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-                -d "$(jq -Rs --arg body "$COMMENT_BODY" '{body: $body}' <<< "")"
+#      - name: Comment on PR with structured snapshot diffs from Release
+#        if: failure()
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
+#      
+#          # コメント本文の構築
+#          COMMENT_BODY=$(cat <<EOF
+#          🚨 **Snapshotテストで差分が発生しています** 🚨
+#    
+#          以下に画像の差分を表示します。
+#    
+#          詳細な画像はこちらからダウンロードしてください。
+#          [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
+#    
+#          EOF
+#          )
+#    
+#              for file in artifacts/diffs/*.png; do
+#                BASENAME=$(basename "$file")
+#                FILENAME=${BASENAME#diff_}  # "diff_" を削除して元のファイル名を取得
+#                DIFF_IMAGE_URL="$RELEASE_URL/$BASENAME"
+#                SUCCESS_IMAGE_URL="$RELEASE_URL/success_${FILENAME}"
+#                FAILED_IMAGE_URL="$RELEASE_URL/failed_${FILENAME}"
+#    
+#                COMMENT_BODY+=$(cat <<EOF
+#    
+#          ### ${FILENAME}
+#    
+#          | 既存 | 差分 | 今回の変更 |
+#          | -- | -- | -- |
+#          | <img src="${SUCCESS_IMAGE_URL}" width="300"> | <img src="${DIFF_IMAGE_URL}" width="300"> | <img src="${FAILED_IMAGE_URL}" width="300"> |
+#    
+#          EOF
+#          )
+#              done
+#    
+#              # JSONエスケープを適用し GitHub API に送信
+#              curl -X POST \
+#                -H "Authorization: token $GITHUB_TOKEN" \
+#                -H "Accept: application/vnd.github+json" \
+#                "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+#                -d "$(jq -Rs --arg body "$COMMENT_BODY" '{body: $body}' <<< "")"
 
       - name: Report Snapshot Diffs via GitHub Checks
         if: failure()
