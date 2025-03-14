@@ -140,42 +140,81 @@ jobs:
       
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
-      - name: Upload success, failed, and diff images to GitHub Release
+      - name: Upload success, failed, and diff images to GitHub Issue
         if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
-      
-          # 成功画像のアップロード
+          # GitHub Issue を作成
+          ISSUE_URL=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test --json url | jq -r '.url')
+          
+          echo "Issue created: $ISSUE_URL"
+
+          # 画像を imgur にアップロード（GitHub API では直接アップロード不可のため、外部サービスを利用）
+          upload_image() {
+            local image_path="$1"
+            local image_url=$(curl -s -F "image=@${image_path}" "https://api.imgur.com/3/upload" -H "Authorization: Client-ID YOUR_IMGUR_CLIENT_ID" | jq -r '.data.link')
+            echo "$image_url"
+          }
+
+          # Markdown の画像リストを作成
+          echo "## Snapshot Test Failures" > snapshot_summary.md
+          echo "- Issue URL: $ISSUE_URL" >> snapshot_summary.md
+
           for file in artifacts/success/*.png; do
-            echo "Uploading success image: $file"
-            curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/octet-stream" \
-              "$UPLOAD_URL?name=success_$(basename "$file")" \
-              --data-binary @"$file"
+            IMAGE_URL=$(upload_image "$file")
+            echo "✅ Success: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
-      
-          # 失敗画像のアップロード
+
           for file in artifacts/failed/*.png; do
-            echo "Uploading failed image: $file"
-            curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/octet-stream" \
-              "$UPLOAD_URL?name=failed_$(basename "$file")" \
-              --data-binary @"$file"
+            IMAGE_URL=$(upload_image "$file")
+            echo "❌ Failed: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
-      
-          # 差分画像のアップロード
+
           for file in artifacts/diffs/*.png; do
-            echo "Uploading diff image: $file"
-            curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/octet-stream" \
-              "$UPLOAD_URL?name=$(basename "$file")" \
-              --data-binary @"$file"
+            IMAGE_URL=$(upload_image "$file")
+            echo "🔄 Diff: ![]($IMAGE_URL)" >> snapshot_summary.md
           done
+
+          # GitHub Issue にコメントとして画像を追加
+          gh issue comment "$ISSUE_URL" --body "$(cat snapshot_summary.md)" --repo ${{ github.repository }}
+
+#      - name: Upload success, failed, and diff images to GitHub Release
+#        if: failure()
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
+#      
+#          # 成功画像のアップロード
+#          for file in artifacts/success/*.png; do
+#            echo "Uploading success image: $file"
+#            curl -s -X POST \
+#              -H "Authorization: token $GITHUB_TOKEN" \
+#              -H "Content-Type: application/octet-stream" \
+#              "$UPLOAD_URL?name=success_$(basename "$file")" \
+#              --data-binary @"$file"
+#          done
+#      
+#          # 失敗画像のアップロード
+#          for file in artifacts/failed/*.png; do
+#            echo "Uploading failed image: $file"
+#            curl -s -X POST \
+#              -H "Authorization: token $GITHUB_TOKEN" \
+#              -H "Content-Type: application/octet-stream" \
+#              "$UPLOAD_URL?name=failed_$(basename "$file")" \
+#              --data-binary @"$file"
+#          done
+#      
+#          # 差分画像のアップロード
+#          for file in artifacts/diffs/*.png; do
+#            echo "Uploading diff image: $file"
+#            curl -s -X POST \
+#              -H "Authorization: token $GITHUB_TOKEN" \
+#              -H "Content-Type: application/octet-stream" \
+#              "$UPLOAD_URL?name=$(basename "$file")" \
+#              --data-binary @"$file"
+#          done
 
 #      - name: Comment on PR with structured snapshot diffs from Release
 #        if: failure()
@@ -221,57 +260,6 @@ jobs:
 #                -H "Accept: application/vnd.github+json" \
 #                "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
 #                -d "$(jq -Rs --arg body "$COMMENT_BODY" '{body: $body}' <<< "")"
-
-      - name: Report Snapshot Diffs via GitHub Checks
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "::group::Processing snapshot images for GitHub Checks"
-      
-          CHECK_NAME="Snapshot Diff Report"
-          GITHUB_API="https://api.github.com/repos/${{ github.repository }}/check-runs"
-      
-          # GitHub Checks の開始
-          CHECK_RUN=$(curl -s -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "$GITHUB_API" \
-            -d "$(jq -n --arg name "$CHECK_NAME" --arg head_sha "${{ github.event.pull_request.head.sha }}" \
-              '{name: $name, head_sha: $head_sha, status: "in_progress"}')")
-      
-          CHECK_ID=$(echo "$CHECK_RUN" | jq -r '.id')
-      
-          # GitHub Actions Artifacts の URL を取得
-          ARTIFACTS_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
-      
-          CHECK_TITLE="🚨 Snapshotテストで差分が発生しました 🚨"
-          CHECK_SUMMARY="🚨 **Snapshotテストで差分が発生しました** 🚨\n\n"
-          CHECK_SUMMARY+="[📥 画像をダウンロード（Artifacts）]($ARTIFACTS_URL)\n\n"
-      
-          # 画像を GitHub Checks に埋め込む（Artifacts のダウンロードリンクを表示）
-          CHECK_SUMMARY+="| 既存（成功時） | 差分 | 新規（失敗時） |\n"
-          CHECK_SUMMARY+="| -- | -- | -- |\n"
-      
-          for file in artifacts/diffs/*.png; do
-            BASENAME=$(basename "$file")
-            FILENAME=${BASENAME#diff_}
-      
-            CHECK_SUMMARY+="| ![成功]($ARTIFACTS_URL) | ![差分]($ARTIFACTS_URL) | ![失敗]($ARTIFACTS_URL) |\n"
-          done
-      
-          # JSONエスケープ
-          ESCAPED_SUMMARY=$(jq -Rs . <<< "$CHECK_SUMMARY")
-      
-          # GitHub Checks を更新（結果を登録）
-          curl -s -X PATCH \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "$GITHUB_API/$CHECK_ID" \
-            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --arg title "$CHECK_TITLE" --arg summary "$ESCAPED_SUMMARY" \
-              '{status: $status, conclusion: $conclusion, output: {title: $title, summary: $summary}}')"
-      
-          echo "::endgroup::"
 
       # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
