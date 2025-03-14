@@ -140,6 +140,21 @@ jobs:
       
           echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
+      - name: Create GitHub Issue for Snapshot Failures
+        run: |
+          echo "Creating GitHub Issue..."
+          ISSUE_JSON=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test --json number,url || echo "{}")
+          
+          ISSUE_NUMBER=$(echo "$ISSUE_JSON" | jq -r '.number // empty')
+          ISSUE_URL=$(echo "$ISSUE_JSON" | jq -r '.url // empty')
+
+          if [[ -z "$ISSUE_NUMBER" || -z "$ISSUE_URL" ]]; then
+            echo "Error: Failed to create issue"
+            exit 1
+          fi
+
+          echo "Issue created: $ISSUE_URL"
+
       - name: Upload success, failed, and diff images to GitHub Issue
         if: failure()
         env:
