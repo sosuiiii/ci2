@@ -141,28 +141,28 @@ jobs:
 #          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       - name: Create GitHub Issue for Snapshot Failures
-        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating GitHub Issue..."
 
-          # GitHub CLI のバージョンと認証状態を確認
-          gh --version
-          gh auth status
-          
-          # Issue 作成を試行
-          ISSUE_OUTPUT=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --label snapshot-test --repo ${{ github.repository }} 2>&1)
-          EXIT_CODE=$?
+          # デバッグモードを有効化
+          set -x
 
-          echo "Issue command output: $ISSUE_OUTPUT"
-          
+          # Issue 作成を試行
+          gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --label snapshot-test --repo ${{ github.repository }}
+
+          # コマンドの終了ステータスを確認
+          EXIT_CODE=$?
+          set +x # デバッグモード終了
+
           if [[ $EXIT_CODE -ne 0 ]]; then
             echo "Error: Failed to create issue (Exit Code: $EXIT_CODE)"
             exit 1
           fi
 
           echo "Issue successfully created!"
+
 
       - name: Upload success, failed, and diff images to GitHub Issue
         if: failure()
