@@ -117,6 +117,7 @@ jobs:
           path: artifacts/failed/*.png
 
       - name: 比較用ブランチ作成 & 画像をコミット
+        if: failure()
         run: |
           # Git のユーザー設定（必要に応じて）
           git config --global user.name "GitHub Actions"
@@ -131,6 +132,7 @@ jobs:
           git push origin comparison-screenshots --force
 
       - name: コメント本文を生成
+        if: failure()
         id: generate_comment
         shell: bash
         run: |
@@ -140,31 +142,11 @@ jobs:
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           COMMENT="### Snapshot Test Results\n"
 
-          # success ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Success:**\n"
-          for file in artifacts/success/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/success/${filename})\n"
-          done
-
-          # failed ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Failed:**\n"
-          for file in artifacts/failed/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/failed/${filename})\n"
-          done
-
-          # diffs ディレクトリ内の画像リンクを追加
-          COMMENT+="\n**Diffs:**\n"
-          for file in artifacts/diffs/*.png; do
-            filename=$(basename "$file")
-            COMMENT+="- [${filename}](${BASE_URL}/diffs/${filename})\n"
-          done
-
           echo "$COMMENT" > comment.md
           echo "::set-output name=body::$(cat comment.md)"
 
       - name: PR にコメント投稿
+        if: failure()
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
