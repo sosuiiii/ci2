@@ -116,31 +116,32 @@ jobs:
           name: snapshot-failed
           path: artifacts/failed/*.png
 
-      - name: Create GitHub Release (if not exists)
-        if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RELEASE_NAME="snapshot-diff-release"
-          EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r ".[] | select(.name==\"$RELEASE_NAME\") | .id")
-      
-          if [ -z "$EXISTING_RELEASE" ]; then
-            echo "Creating new release..."
-            RESPONSE=$(curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ github.repository }}/releases" \
-              -d "{\"tag_name\": \"snapshot-diff\", \"name\": \"$RELEASE_NAME\", \"body\": \"Snapshot diff images\"}")
-            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
-          else
-            echo "Release already exists. Using ID: $EXISTING_RELEASE"
-            RELEASE_ID=$EXISTING_RELEASE
-          fi
-      
-          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+#      - name: Create GitHub Release (if not exists)
+#        if: failure()
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          RELEASE_NAME="snapshot-diff-release"
+#          EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+#            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r ".[] | select(.name==\"$RELEASE_NAME\") | .id")
+#      
+#          if [ -z "$EXISTING_RELEASE" ]; then
+#            echo "Creating new release..."
+#            RESPONSE=$(curl -s -X POST \
+#              -H "Authorization: token $GITHUB_TOKEN" \
+#              -H "Accept: application/vnd.github.v3+json" \
+#              "https://api.github.com/repos/${{ github.repository }}/releases" \
+#              -d "{\"tag_name\": \"snapshot-diff\", \"name\": \"$RELEASE_NAME\", \"body\": \"Snapshot diff images\"}")
+#            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+#          else
+#            echo "Release already exists. Using ID: $EXISTING_RELEASE"
+#            RELEASE_ID=$EXISTING_RELEASE
+#          fi
+#      
+#          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       - name: Create GitHub Issue for Snapshot Failures
+        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
