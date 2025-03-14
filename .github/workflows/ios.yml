@@ -142,6 +142,27 @@ jobs:
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           COMMENT="### Snapshot Test Results\n"
 
+          # success ディレクトリ内の画像リンクを追加
+          COMMENT+="\n**Success:**\n"
+          for file in artifacts/success/*.png; do
+            filename=$(basename "$file")
+            COMMENT+="- [${filename}](${BASE_URL}/success/${filename})\n"
+          done
+
+          # failed ディレクトリ内の画像リンクを追加
+          COMMENT+="\n**Failed:**\n"
+          for file in artifacts/failed/*.png; do
+            filename=$(basename "$file")
+            COMMENT+="- [${filename}](${BASE_URL}/failed/${filename})\n"
+          done
+
+          # diffs ディレクトリ内の画像リンクを追加
+          COMMENT+="\n**Diffs:**\n"
+          for file in artifacts/diffs/*.png; do
+            filename=$(basename "$file")
+            COMMENT+="- [${filename}](${BASE_URL}/diffs/${filename})\n"
+          done
+
           echo "$COMMENT" > comment.md
           echo "::set-output name=body::$(cat comment.md)"
 
