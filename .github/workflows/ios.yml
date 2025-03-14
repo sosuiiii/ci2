@@ -170,9 +170,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # GitHub Issue を作成
-          ISSUE_URL=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test --json url | jq -r '.url')
+          echo "Creating GitHub Issue..."
           
+          # Issue を作成
+          ISSUE_NUMBER=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --repo ${{ github.repository }} --label snapshot-test | awk '{print $NF}')
+
+          if [[ -z "$ISSUE_NUMBER" ]]; then
+            echo "Error: Issue creation failed"
+            exit 1
+          fi
+
+          ISSUE_URL="https://github.com/${{ github.repository }}/issues/${ISSUE_NUMBER}"
           echo "Issue created: $ISSUE_URL"
 
           # 画像を imgur にアップロード（GitHub API では直接アップロード不可のため、外部サービスを利用）
@@ -202,7 +210,7 @@ jobs:
           done
 
           # GitHub Issue にコメントとして画像を追加
-          gh issue comment "$ISSUE_URL" --body "$(cat snapshot_summary.md)" --repo ${{ github.repository }}
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat snapshot_summary.md)" --repo ${{ github.repository }}
 
 #      - name: Upload success, failed, and diff images to GitHub Release
 #        if: failure()
