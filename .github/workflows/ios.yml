@@ -229,7 +229,8 @@ jobs:
           CHECK_ID=$(echo "$CHECK_RUN" | jq -r '.id')
       
           # コメント用変数（JSONエスケープ対応）
-          CHECK_SUMMARY=$(jq -n --arg text "🚨 **Snapshotテストで差分が発生しました** 🚨\n\n" '{summary: $text}')
+          CHECK_TITLE="🚨 Snapshotテストで差分が発生しました 🚨"
+          CHECK_SUMMARY="🚨 **Snapshotテストで差分が発生しました** 🚨\n\n"
       
           for file in artifacts/diffs/*.png; do
             BASENAME=$(basename "$file")
@@ -246,7 +247,7 @@ jobs:
             IMAGE_TABLE+="| -- | -- | -- |\n"
             IMAGE_TABLE+="| ![成功](data:image/png;base64,${SUCCESS_B64}) | ![差分](data:image/png;base64,${DIFF_B64}) | ![失敗](data:image/png;base64,${FAILED_B64}) |\n\n"
       
-            CHECK_SUMMARY=$(echo "$CHECK_SUMMARY" | jq --arg img_table "$IMAGE_TABLE" '.summary += $img_table')
+            CHECK_SUMMARY+="$IMAGE_TABLE"
           done
       
           # GitHub Checks を更新（結果を登録）
@@ -254,8 +255,8 @@ jobs:
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "$GITHUB_API/$CHECK_ID" \
-            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --argjson output "$CHECK_SUMMARY" \
-              '{status: $status, conclusion: $conclusion, output: $output}')"
+            -d "$(jq -n --arg status "completed" --arg conclusion "failure" --arg title "$CHECK_TITLE" --arg summary "$CHECK_SUMMARY" \
+              '{status: $status, conclusion: $conclusion, output: {title: $title, summary: $summary}}')"
       
           echo "::endgroup::"
 
