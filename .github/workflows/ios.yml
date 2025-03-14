@@ -141,29 +141,27 @@ jobs:
 #          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
 
       - name: Create GitHub Issue for Snapshot Failures
-        if: failure()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating GitHub Issue..."
+
+          # GitHub CLI のバージョンと認証状態を確認
+          gh --version
+          gh auth status
           
+          # Issue 作成を試行
           ISSUE_OUTPUT=$(gh issue create --title "Snapshot Test Failures" --body "Snapshot tests failed. See the images below." --label snapshot-test --repo ${{ github.repository }} 2>&1)
+          EXIT_CODE=$?
 
-          if [[ $? -ne 0 ]]; then
-            echo "Error: Failed to create issue"
-            echo "$ISSUE_OUTPUT"
+          echo "Issue command output: $ISSUE_OUTPUT"
+          
+          if [[ $EXIT_CODE -ne 0 ]]; then
+            echo "Error: Failed to create issue (Exit Code: $EXIT_CODE)"
             exit 1
           fi
 
-          # 作成した Issue の URL を取得
-          ISSUE_URL=$(gh issue list --repo ${{ github.repository }} --state open --limit 1 --json url --jq '.[0].url')
-
-          if [[ -z "$ISSUE_URL" ]]; then
-            echo "Error: Could not retrieve issue URL"
-            exit 1
-          fi
-
-          echo "Issue created: $ISSUE_URL"
+          echo "Issue successfully created!"
 
       - name: Upload success, failed, and diff images to GitHub Issue
         if: failure()
