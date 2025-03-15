@@ -16,11 +16,11 @@ jobs:
       - name: Set Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.0.app
 
-      - name: Print Xcode version
-        run: xcodebuild -version
-
-      - name: Print available simulators
-        run: xcrun simctl list
+#      - name: Print Xcode version
+#        run: xcodebuild -version
+#
+#      - name: Print available simulators
+#        run: xcrun simctl list
 
       - name: Set Default Scheme
         run: |
@@ -56,9 +56,6 @@ jobs:
             echo "No images found in SnapshotFilePath folder."
           fi
 
-      - name: Install ImageMagick on macOS
-        run: brew install imagemagick
-
       - name: Test
         env:
           scheme: ${{ 'default' }}
@@ -70,7 +67,11 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-      - name: Generate diff images for all failed snapshots using ksdiff
+      - name: Install ImageMagick on macOS
+        if: failure()
+        run: brew install imagemagick
+
+      - name: Generate diff images for all failed snapshots using compare
         if: failure()
         run: |
           set -e
@@ -157,9 +158,9 @@ jobs:
           rows=""
           for fname in "${files[@]}"; do
             rows="${rows}"$'    <tr>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>\n'
             rows="${rows}"$'    </tr>\n'
           done
           if [ -z "$rows" ]; then
@@ -193,119 +194,6 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-path: comment.md
 
-#      - name: Create GitHub Release (if not exists)
-#        if: failure()
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          RELEASE_NAME="snapshot-diff-release"
-#          EXISTING_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-#            "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r ".[] | select(.name==\"$RELEASE_NAME\") | .id")
-#      
-#          if [ -z "$EXISTING_RELEASE" ]; then
-#            echo "Creating new release..."
-#            RESPONSE=$(curl -s -X POST \
-#              -H "Authorization: token $GITHUB_TOKEN" \
-#              -H "Accept: application/vnd.github.v3+json" \
-#              "https://api.github.com/repos/${{ github.repository }}/releases" \
-#              -d "{\"tag_name\": \"snapshot-diff\", \"name\": \"$RELEASE_NAME\", \"body\": \"Snapshot diff images\"}")
-#            RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
-#          else
-#            echo "Release already exists. Using ID: $EXISTING_RELEASE"
-#            RELEASE_ID=$EXISTING_RELEASE
-#          fi
-#      
-#          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
-
-#      - name: 必要なツールをインストール
-#        if: failure()
-#        run: |
-#          sudo apt-get update
-#          sudo apt-get install -y jq curl
-
-#      - name: Upload success, failed, and diff images to GitHub Release
-#        if: failure()
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          UPLOAD_URL="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets"
-#      
-#          # 成功画像のアップロード
-#          for file in artifacts/success/*.png; do
-#            echo "Uploading success image: $file"
-#            curl -s -X POST \
-#              -H "Authorization: token $GITHUB_TOKEN" \
-#              -H "Content-Type: application/octet-stream" \
-#              "$UPLOAD_URL?name=success_$(basename "$file")" \
-#              --data-binary @"$file"
-#          done
-#      
-#          # 失敗画像のアップロード
-#          for file in artifacts/failed/*.png; do
-#            echo "Uploading failed image: $file"
-#            curl -s -X POST \
-#              -H "Authorization: token $GITHUB_TOKEN" \
-#              -H "Content-Type: application/octet-stream" \
-#              "$UPLOAD_URL?name=failed_$(basename "$file")" \
-#              --data-binary @"$file"
-#          done
-#      
-#          # 差分画像のアップロード
-#          for file in artifacts/diffs/*.png; do
-#            echo "Uploading diff image: $file"
-#            curl -s -X POST \
-#              -H "Authorization: token $GITHUB_TOKEN" \
-#              -H "Content-Type: application/octet-stream" \
-#              "$UPLOAD_URL?name=$(basename "$file")" \
-#              --data-binary @"$file"
-#          done
-
-#      - name: Comment on PR with structured snapshot diffs from Release
-#        if: failure()
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/snapshot-diff"
-#      
-#          # コメント本文の構築
-#          COMMENT_BODY=$(cat <<EOF
-#          🚨 **Snapshotテストで差分が発生しています** 🚨
-#    
-#          以下に画像の差分を表示します。
-#    
-#          詳細な画像はこちらからダウンロードしてください。
-#          [📥 Artifactsをダウンロード](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-#    
-#          EOF
-#          )
-#    
-#              for file in artifacts/diffs/*.png; do
-#                BASENAME=$(basename "$file")
-#                FILENAME=${BASENAME#diff_}  # "diff_" を削除して元のファイル名を取得
-#                DIFF_IMAGE_URL="$RELEASE_URL/$BASENAME"
-#                SUCCESS_IMAGE_URL="$RELEASE_URL/success_${FILENAME}"
-#                FAILED_IMAGE_URL="$RELEASE_URL/failed_${FILENAME}"
-#    
-#                COMMENT_BODY+=$(cat <<EOF
-#    
-#          ### ${FILENAME}
-#    
-#          | 既存 | 差分 | 今回の変更 |
-#          | -- | -- | -- |
-#          | <img src="${SUCCESS_IMAGE_URL}" width="300"> | <img src="${DIFF_IMAGE_URL}" width="300"> | <img src="${FAILED_IMAGE_URL}" width="300"> |
-#    
-#          EOF
-#          )
-#              done
-#    
-#              # JSONエスケープを適用し GitHub API に送信
-#              curl -X POST \
-#                -H "Authorization: token $GITHUB_TOKEN" \
-#                -H "Accept: application/vnd.github+json" \
-#                "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-#                -d "$(jq -Rs --arg body "$COMMENT_BODY" '{body: $body}' <<< "")"
-
-      # Issueにあげて公開URLを取得すると良さそう
       - name: Cache VRT snapshots
         if: always()
         uses: actions/cache/save@v3
