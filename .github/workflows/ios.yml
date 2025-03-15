@@ -86,7 +86,7 @@ jobs:
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
-              diff_file="$DIFF_DIR/diff_$filename"
+              diff_file="$DIFF_DIR/$filename"
               compare "$success" "$failed" "$diff_file" || true
       
               # 成功・失敗画像もコピー
