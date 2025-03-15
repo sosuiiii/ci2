@@ -158,9 +158,9 @@ jobs:
           rows=""
           for fname in "${files[@]}"; do
             rows="${rows}"$'    <tr>\n'
-            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>\n'
-            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>\n'
-            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>'
             rows="${rows}"$'    </tr>\n'
           done
           if [ -z "$rows" ]; then
