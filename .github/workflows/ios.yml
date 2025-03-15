@@ -167,7 +167,7 @@ jobs:
             rows=$'    <tr><td colspan="3">No images found</td></tr>\n'
           fi
           
-          comment=$(cat <<EOF
+          comment=$(cat <<EOF | sed '/./,$!d'
           <table>
             <thead>
               <tr>
