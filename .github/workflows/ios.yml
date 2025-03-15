@@ -117,7 +117,7 @@ jobs:
           path: artifacts/failed/*.png
 
       - name: 比較用ブランチ作成 & 画像をコミット
-        if: failure()
+        if: ${{ failure() }}
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -128,7 +128,7 @@ jobs:
           git push origin comparison-screenshots --force
 
       - name: コメント本文を生成
-        if: failure()
+        if: ${{ failure() }}
         id: generate_comment
         shell: bash
         run: |
@@ -137,7 +137,22 @@ jobs:
           BRANCH=comparison-screenshots
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           
-          comment=$(cat <<'EOF'
+          # rows 変数に各画像のテーブル行を連結
+          rows=""
+          for file in artifacts/success/*.png; do
+            filename=$(basename "$file")
+            rows="${rows}    <tr>\n"
+            rows="${rows}      <td><img src=\"${BASE_URL}/success/${filename}\" width=\"300\"></td>\n"
+            rows="${rows}      <td><img src=\"${BASE_URL}/diffs/${filename}\" width=\"300\"></td>\n"
+            rows="${rows}      <td><img src=\"${BASE_URL}/failed/${filename}\" width=\"300\"></td>\n"
+            rows="${rows}    </tr>\n"
+          done
+          if [ -z "$rows" ]; then
+            rows="    <tr><td colspan='3'>No images found</td></tr>\n"
+          fi
+
+          # ヒアドキュメントでテーブル全体を生成
+          comment=$(cat <<EOF
           <table>
             <thead>
               <tr>
@@ -147,31 +162,15 @@ jobs:
               </tr>
             </thead>
             <tbody>
+          ${rows}  </tbody>
+          </table>
           EOF
           )
-          found=0
-          for file in artifacts/success/*.png; do
-          found=1
-          filename=$(basename "$file")
-          comment+=$(cat <<EOF
-              <tr>
-                <td><img src="${BASE_URL}/success/${filename}" width="300"></td>
-                <td><img src="${BASE_URL}/diffs/${filename}" width="300"></td>
-                <td><img src="${BASE_URL}/failed/${filename}" width="300"></td>
-              </tr>
-          EOF
-          )
-          done
-          if [ $found -eq 0 ]; then
-            comment+="    <tr><td colspan='3'>No images found</td></tr>"
-          fi
-          comment+="  </tbody>
-          </table>"
           echo "$comment" > comment.md
           echo "::set-output name=body::$(cat comment.md)"
 
       - name: PR にコメント投稿
-        if: failure()
+        if: ${{ failure() }}
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
