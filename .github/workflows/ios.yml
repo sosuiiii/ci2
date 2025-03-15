@@ -129,23 +129,25 @@ jobs:
 
       - name: コメント本文を生成
         if: ${{ failure() }}
-        id: generate_comment
         shell: bash
         run: |
           shopt -s nullglob
-          # 各ディレクトリ内のファイル名のユニオンを作成
-          declare -A files
-          for file in artifacts/success/*.png; do
-            filename=$(basename "$file")
-            files["$filename"]=1
-          done
-          for file in artifacts/diffs/*.png; do
-            filename=$(basename "$file")
-            files["$filename"]=1
-          done
-          for file in artifacts/failed/*.png; do
-            filename=$(basename "$file")
-            files["$filename"]=1
+          # 各ディレクトリからユニークなファイル名を集める（連想配列の代替）
+          files=()
+          for file in artifacts/success/*.png artifacts/diffs/*.png artifacts/failed/*.png; do
+            if [ -e "$file" ]; then
+              fname=$(basename "$file")
+              found=0
+              for existing in "${files[@]}"; do
+                if [ "$existing" = "$fname" ]; then
+                  found=1
+                  break
+                fi
+              done
+              if [ $found -eq 0 ]; then
+                files+=("$fname")
+              fi
+            fi
           done
           
           REPO=${GITHUB_REPOSITORY}
@@ -153,12 +155,11 @@ jobs:
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           
           rows=""
-          # 集めた全ファイル名について行を生成
-          for filename in "${!files[@]}"; do
+          for fname in "${files[@]}"; do
             rows="${rows}"$'    <tr>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/success/'${filename}'" width="300"></td>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/diffs/'${filename}'" width="300"></td>\n'
-            rows="${rows}"$'      <td><img src="'${BASE_URL}'/failed/'${filename}'" width="300"></td>\n'
+            rows="${rows}"$'      <td><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>\n'
+            rows="${rows}"$'      <td><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>\n'
             rows="${rows}"$'    </tr>\n'
           done
           if [ -z "$rows" ]; then
@@ -179,12 +180,10 @@ jobs:
           </table>
           EOF
           )
+          # 生成したコメントをファイルに書き出す
           echo "$comment" > comment.md
-          {
-            echo "body<<EOF"
-            cat comment.md
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # ログ出力して内容を確認
+          cat comment.md
 
       - name: PR にコメント投稿
         if: ${{ failure() }}
@@ -192,9 +191,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ steps.generate_comment.outputs.body }}
-
-
+          body-path: comment.md
 
 #      - name: Create GitHub Release (if not exists)
 #        if: failure()
