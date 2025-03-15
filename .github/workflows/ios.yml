@@ -137,9 +137,9 @@ jobs:
           BRANCH=comparison-screenshots
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           
-          # rows 変数に各画像の行を作成（改行を入れるため $'…\n' を使用）
+          # diff 画像を基準にテーブル行を生成
           rows=""
-          for file in artifacts/success/*.png; do
+          for file in artifacts/diffs/*.png; do
             filename=$(basename "$file")
             rows="${rows}"$'    <tr>\n'
             rows="${rows}"$'      <td><img src="'${BASE_URL}'/success/'${filename}'" width="300"></td>\n'
@@ -151,7 +151,6 @@ jobs:
             rows=$'    <tr><td colspan="3">No images found</td></tr>\n'
           fi
           
-          # ヒアドキュメントでテーブル全体を生成
           comment=$(cat <<EOF
           <table>
             <thead>
@@ -167,7 +166,6 @@ jobs:
           EOF
           )
           echo "$comment" > comment.md
-          # 新しい方法で出力を設定
           {
             echo "body<<EOF"
             cat comment.md
