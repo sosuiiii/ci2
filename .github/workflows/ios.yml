@@ -127,20 +127,45 @@ jobs:
           git commit -m "Add snapshot test screenshots for comparison"
           git push origin comparison-screenshots --force
 
+      - name: 比較用ブランチ作成 & 画像をコミット
+        if: ${{ failure() }}
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout --orphan comparison-screenshots
+          git reset --hard
+          git add artifacts
+          git commit -m "Add snapshot test screenshots for comparison"
+          git push origin comparison-screenshots --force
+
       - name: コメント本文を生成
         if: ${{ failure() }}
         id: generate_comment
         shell: bash
         run: |
           shopt -s nullglob
+          # 各ディレクトリ内のファイル名のユニオンを作成
+          declare -A files
+          for file in artifacts/success/*.png; do
+            filename=$(basename "$file")
+            files["$filename"]=1
+          done
+          for file in artifacts/diffs/*.png; do
+            filename=$(basename "$file")
+            files["$filename"]=1
+          done
+          for file in artifacts/failed/*.png; do
+            filename=$(basename "$file")
+            files["$filename"]=1
+          done
+          
           REPO=${GITHUB_REPOSITORY}
           BRANCH=comparison-screenshots
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
           
-          # diff 画像を基準にテーブル行を生成
           rows=""
-          for file in artifacts/diffs/*.png; do
-            filename=$(basename "$file")
+          # 集めた全ファイル名について行を生成
+          for filename in "${!files[@]}"; do
             rows="${rows}"$'    <tr>\n'
             rows="${rows}"$'      <td><img src="'${BASE_URL}'/success/'${filename}'" width="300"></td>\n'
             rows="${rows}"$'      <td><img src="'${BASE_URL}'/diffs/'${filename}'" width="300"></td>\n'
