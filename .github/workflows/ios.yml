@@ -91,26 +91,42 @@ jobs:
             done
           done
 
-      - name: Upload diff images as Artifact
+      - name: 比較用ブランチ作成 & 画像をコミット
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: snapshot-diffs
-          path: artifacts/diffs/*.png
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout --orphan comparison-screenshots
+          git reset --hard
+          git add artifacts
+          git commit -m "Add snapshot test screenshots for comparison"
+          git push origin comparison-screenshots --force
 
-      - name: Upload success images as Artifacts
+      - name: コメント本文を生成
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: snapshot-success
-          path: artifacts/success/*.png
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=($(basename -a artifacts/success/*.png artifacts/diffs/*.png artifacts/failed/*.png | sort -u))
+          REPO=${GITHUB_REPOSITORY}
+          BRANCH=comparison-screenshots
+          BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
 
-      - name: Upload failed images as Artifacts
+          rows=""
+          for fname in "${files[@]}"; do
+            rows+="<tr><td>${fname}<br><img src='${BASE_URL}/success/${fname}' width='300'></td><td>${fname}<br><img src='${BASE_URL}/diffs/${fname}' width='300'></td><td>${fname}<br><img src='${BASE_URL}/failed/${fname}' width='300'></td></tr>"
+          done
+
+          comment="<table><thead><tr><th>既存</th><th>差分</th><th>今回</th></tr></thead><tbody>${rows}</tbody></table>"
+          echo "$comment" > comment.md
+
+      - name: PR にコメント投稿
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: peter-evans/create-or-update-comment@v3
         with:
-          name: snapshot-failed
-          path: artifacts/failed/*.png
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: comment.md
 
       - name: Cache VRT snapshots
         if: always()
