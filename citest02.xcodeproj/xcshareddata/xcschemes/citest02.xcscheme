@@ -41,6 +41,17 @@
                ReferencedContainer = "container:citest02.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "530FEB5D2D87BF6300850D14"
+               BuildableName = "citest02SnapshotTests.xctest"
+               BlueprintName = "citest02SnapshotTests"
+               ReferencedContainer = "container:citest02.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
@@ -63,13 +74,6 @@
             ReferencedContainer = "container:citest02.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "SNAPSHOT_ARTIFACTS"
-            value = "$(SOURCE_ROOT)/$(PROJECT_NAME)/Snapshots/__Snapshots__/Failure"
-            isEnabled = "YES">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

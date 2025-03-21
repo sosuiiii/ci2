@@ -47,14 +47,14 @@ jobs:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
 
-      - name: Check if images exist in SnapshotFilePath folder
-        run: |
-          count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
-          if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in SnapshotFilePath folder."
-          else
-            echo "No images found in SnapshotFilePath folder."
-          fi
+#      - name: Check if images exist in SnapshotFilePath folder
+#        run: |
+#          count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+#          if [ $count -gt 0 ]; then
+#            echo "Found $count image(s) in SnapshotFilePath folder."
+#          else
+#            echo "No images found in SnapshotFilePath folder."
+#          fi
 
       - name: Test
         env:
@@ -67,8 +67,20 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-      - name: Install ImageMagick on macOS
+#      - name: Install ImageMagick on macOS
+#        if: failure()
+#        run: brew install imagemagick
+
+      - name: Cache ImageMagick
         if: failure()
+        id: cache_imagemagick
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/Cellar/imagemagick
+          key: ${{ runner.os }}-imagemagick-v1
+
+      - name: Install ImageMagick if cache not found
+        if: steps.cache_imagemagick.outputs.cache-hit != 'true'
         run: brew install imagemagick
 
       - name: Generate diff images for all failed snapshots using compare
