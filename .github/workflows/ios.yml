@@ -39,7 +39,7 @@ jobs:
         id: restore-vrt
         with:
           path: |
-            ./citest02/**/Sources/SnapshotTest/__Snapshots__
+            ./citest02/Features/**/Sources/SnapshotTest/__Snapshots__
           key: "snapshot-test"
 
       - name: Test
@@ -52,44 +52,6 @@ jobs:
           if [ "$(ls -A | grep -i \\.xcworkspace\$)" ]; then filetype_parameter="workspace" && file_to_build="$(ls -A | grep -i \\.xcworkspace\$)"; else filetype_parameter="project" && file_to_build="$(ls -A | grep -i \\.xcodeproj\$)"; fi
           file_to_build=$(echo $file_to_build | awk '{$1=$1;print}')
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
-
-      - name: Cache ImageMagick
-        if: failure()
-        id: cache_imagemagick
-        uses: actions/cache@v3
-        with:
-          path: /usr/local/Cellar/imagemagick
-          key: ${{ runner.os }}-imagemagick-v1
-
-      - name: Install ImageMagick if cache not found
-        if: steps.cache_imagemagick.outputs.cache-hit != 'true'
-        run: brew install imagemagick
-
-      - name: Generate diff images for all failed snapshots using compare
-        if: failure()
-        run: |
-          set -e
-          FAILED_DIRS=$(find ./citest02 -type d -path "*/Snapshots/Failure/*")
-          DIFF_DIR="$(pwd)/artifacts/diffs"
-          SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
-          FAILED_OUT_DIR="$(pwd)/artifacts/failed"
-
-          mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
-
-          for FAILED_DIR in $FAILED_DIRS; do
-            FEATURE_DIR=$(echo "$FAILED_DIR" | sed 's|/Sources/Snapshots/Failure|/Sources/SnapshotTest/__Snapshots__|')
-            for failed in "$FAILED_DIR"/*.png; do
-              filename=$(basename "$failed")
-              success="$FEATURE_DIR/$(basename "$FAILED_DIR")/$filename"
-              if [ -f "$success" ]; then
-                diff_file="$DIFF_DIR/$filename"
-                compare "$success" "$failed" "$diff_file" || true
-
-                cp "$success" "$SUCCESS_OUT_DIR/$filename"
-                cp "$failed" "$FAILED_OUT_DIR/$filename"
-              fi
-            done
-          done
 
       - name: 比較用ブランチ作成 & 画像をコミット
         if: failure()
@@ -133,5 +95,5 @@ jobs:
         id: vrt-cache
         with:
           path: |
-            ./citest02/**/Sources/SnapshotTest/__Snapshots__
+            ./citest02/Features/**/Sources/SnapshotTest/__Snapshots__
           key: "snapshot-test"
