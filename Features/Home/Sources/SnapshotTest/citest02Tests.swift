@@ -51,13 +51,14 @@ enum SnapshotFailurePath {
         else {
             return ""
         }
-        let baseComponents = Array(pathComponents[0...targetIndex + 1])
+        let baseComponents = Array(pathComponents[0...targetIndex - 1])
         let basePath = NSString.path(withComponents: baseComponents)
         let baseURL = URL(fileURLWithPath: basePath)
         let snapshotURL = baseURL
-            .appendingPathComponent("Sources")
-            .appendingPathComponent("Snapshots")
-            .appendingPathComponent("Failure")
+//            .appendingPathComponent("Sources")
+//            .appendingPathComponent("Snapshots")
+            .appendingPathComponent("FailureSnapshots")
+        print("🥕snapshotURL:\(snapshotURL)")
         return snapshotURL.path
     }
 }
