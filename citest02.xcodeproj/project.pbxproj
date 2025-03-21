@@ -40,7 +40,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Discover/Sources/SnapshotTest/DiscoverTests.swift,
-				Home/Sources/SnapshotTest/__Snapshots__/citest02Tests/example.1.png,
 				Home/Sources/SnapshotTest/citest02Tests.swift,
 			);
 			target = 5344E3E92D6F2CC300DDDBC4 /* citest02 */;

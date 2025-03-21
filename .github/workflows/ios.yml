@@ -53,6 +53,23 @@ jobs:
           file_to_build=$(echo $file_to_build | awk '{$1=$1;print}')
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
+      - name: Generate diff images for failed snapshots
+        if: failure()
+        run: |
+          mkdir -p artifacts/{diffs,success,failed}
+          FAILED_DIRS=$(find ./citest02 -type d -path "*/Snapshots/Failure/*")
+          for FAILED_DIR in $FAILED_DIRS; do
+            FEATURE_DIR=$(echo "$FAILED_DIR" | sed 's|/Sources/Snapshots/Failure|/Sources/SnapshotTest/__Snapshots__|')
+            for failed in "$FAILED_DIR"/*.png; do
+              filename=$(basename "$failed")
+              success="$FEATURE_DIR/$(basename "$FAILED_DIR")/$filename"
+              if [ -f "$success" ]; then
+                compare "$success" "$failed" artifacts/diffs/$filename || true
+                cp "$success" artifacts/success/$filename
+                cp "$failed" artifacts/failed/$filename
+              fi
+            done
+          done
       - name: 比較用ブランチ作成 & 画像をコミット
         if: failure()
         run: |
@@ -67,17 +84,14 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          shopt -s nullglob
-          files=($(basename -a artifacts/success/*.png artifacts/diffs/*.png artifacts/failed/*.png | sort -u))
+          files=$(cd artifacts/success && ls *.png)
           REPO=${GITHUB_REPOSITORY}
           BRANCH=comparison-screenshots
           BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
-
           rows=""
-          for fname in "${files[@]}"; do
+          for fname in $files; do
             rows+="<tr><td>${fname}<br><img src='${BASE_URL}/success/${fname}' width='300'></td><td>${fname}<br><img src='${BASE_URL}/diffs/${fname}' width='300'></td><td>${fname}<br><img src='${BASE_URL}/failed/${fname}' width='300'></td></tr>"
           done
-
           comment="<table><thead><tr><th>既存</th><th>差分</th><th>今回</th></tr></thead><tbody>${rows}</tbody></table>"
           echo "$comment" > comment.md
 
