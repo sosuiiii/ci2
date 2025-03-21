@@ -39,7 +39,7 @@ jobs:
         id: restore-vrt
         with:
           path: |
-            ./citest02/Features/**/Sources/SnapshotTest/__Snapshots__
+            ./citest02/**/Sources/SnapshotTest/__Snapshots__
           key: "snapshot-test"
 
       - name: Test
@@ -69,7 +69,7 @@ jobs:
         if: failure()
         run: |
           set -e
-          FAILED_DIRS=$(find ./citest02/Features -type d -path "*/Snapshots/Failure/*")
+          FAILED_DIRS=$(find ./citest02 -type d -path "*/Snapshots/Failure/*")
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
@@ -118,5 +118,5 @@ jobs:
         id: vrt-cache
         with:
           path: |
-            ./citest02/Features/**/Sources/SnapshotTest/__Snapshots__
+            ./citest02/**/Sources/SnapshotTest/__Snapshots__
           key: "snapshot-test"
