@@ -16,12 +16,6 @@ jobs:
       - name: Set Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.0.app
 
-#      - name: Print Xcode version
-#        run: xcodebuild -version
-#
-#      - name: Print available simulators
-#        run: xcrun simctl list
-
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
@@ -44,16 +38,16 @@ jobs:
         uses: actions/cache@v3
         id: restore-vrt
         with:
-          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
+          path: ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests
           key: "snapshot-test"
 
-      - name: Check if images exist in SnapshotFilePath folder
+      - name: Check if images exist in Snapshots folder
         run: |
-          count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
           if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in SnapshotFilePath folder."
+            echo "Found $count image(s) in Snapshots folder."
           else
-            echo "No images found in SnapshotFilePath folder."
+            echo "No images found in Snapshots folder."
           fi
 
       - name: Test
@@ -75,22 +69,20 @@ jobs:
         if: failure()
         run: |
           set -e
-          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
-          SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
+          FAILED_DIR="./citest02/FailureSnapshots"
+          SUCCESS_DIR="./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
-      
+
           mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
-      
+
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
               diff_file="$DIFF_DIR/$filename"
               compare "$success" "$failed" "$diff_file" || true
-      
-              # 成功・失敗画像もコピー
               cp "$success" "$SUCCESS_OUT_DIR/$filename"
               cp "$failed" "$FAILED_OUT_DIR/$filename"
             fi
@@ -118,7 +110,7 @@ jobs:
           path: artifacts/failed/*.png
 
       - name: 比較用ブランチ作成 & 画像をコミット
-        if: ${{ failure() }}
+        if: failure()
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -187,7 +179,7 @@ jobs:
           cat comment.md
 
       - name: PR にコメント投稿
-        if: ${{ failure() }}
+        if: failure()
         uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -199,5 +191,5 @@ jobs:
         uses: actions/cache/save@v3
         id: vrt-cache
         with:
-          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
+          path: ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests
           key: "snapshot-test"
