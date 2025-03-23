@@ -91,6 +91,26 @@ jobs:
             echo "No images found in Snapshots folder."
           fi
 
+      - name: Check if images exist in Snapshots folder
+        if: failure()
+        run: |
+          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "Found $count image(s) in Snapshots folder."
+          else
+            echo "No images found in Snapshots folder."
+          fi
+
+      - name: Check if images exist in Snapshots folder
+        if: failure()
+        run: |
+          count=$(find Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "Found $count image(s) in Snapshots folder."
+          else
+            echo "No images found in Snapshots folder."
+          fi
+
       - name: Install ImageMagick on macOS
         if: failure()
         run: brew install imagemagick
