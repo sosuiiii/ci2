@@ -61,6 +61,24 @@ jobs:
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
+      - name: Check if images exist in Snapshots folder
+        run: |
+          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "Found $count image(s) in Snapshots folder."
+          else
+            echo "No images found in Snapshots folder."
+          fi
+
+      - name: Check if images exist in Snapshots folder
+        run: |
+          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__ -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "Found $count image(s) in Snapshots folder."
+          else
+            echo "No images found in Snapshots folder."
+          fi
+
       - name: Install ImageMagick on macOS
         if: failure()
         run: brew install imagemagick
