@@ -64,47 +64,17 @@ jobs:
       - name: Check if images exist in Snapshots folder
         if: failure()
         run: |
-          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
-          if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in Snapshots folder."
-          else
-            echo "No images found in Snapshots folder."
-          fi
-
-      - name: Check if images exist in Snapshots folder
-        if: failure()
-        run: |
-          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__/** -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
-          if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in Snapshots folder."
-          else
-            echo "No images found in Snapshots folder."
-          fi
-
-      - name: Check if images exist in Snapshots folder
-        if: failure()
-        run: |
-          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
-          if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in Snapshots folder."
-          else
-            echo "No images found in Snapshots folder."
-          fi
-
-      - name: Check if images exist in Snapshots folder
-        if: failure()
-        run: |
-          count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
-          if [ $count -gt 0 ]; then
-            echo "Found $count image(s) in Snapshots folder."
-          else
-            echo "No images found in Snapshots folder."
-          fi
-
-      - name: Check if images exist in Snapshots folder
-        if: failure()
-        run: |
           count=$(find Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          if [ $count -gt 0 ]; then
+            echo "Found $count image(s) in Snapshots folder."
+          else
+            echo "No images found in Snapshots folder."
+          fi
+
+      - name: Check if images exist in Snapshots folder
+        if: failure()
+        run: |
+          count=$(find Features/Home/Sources/SnapshotTest/__Snapshots__/** -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
           if [ $count -gt 0 ]; then
             echo "Found $count image(s) in Snapshots folder."
           else
@@ -120,7 +90,8 @@ jobs:
         run: |
           set -e
           FAILED_DIR="./citest02/FailureSnapshots"
-          SUCCESS_DIR="./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests"
+          SUCCESS_DIR="Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests"
+          
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
@@ -241,6 +212,6 @@ jobs:
         uses: actions/cache/save@v3
         id: vrt-cache
         with:
-          path: ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__
+          path: Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests
           key: "snapshot-test"
           # Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests
