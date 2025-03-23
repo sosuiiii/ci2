@@ -62,6 +62,7 @@ jobs:
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
       - name: Check if images exist in Snapshots folder
+        if: failure()
         run: |
           count=$(find ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
           if [ $count -gt 0 ]; then
@@ -71,6 +72,7 @@ jobs:
           fi
 
       - name: Check if images exist in Snapshots folder
+        if: failure()
         run: |
           count=$(find ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__ -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
           if [ $count -gt 0 ]; then
