@@ -191,5 +191,6 @@ jobs:
         uses: actions/cache/save@v3
         id: vrt-cache
         with:
-          path: ./citest02/Features/Home/Sources/SnapshotTest/Snapshots/citest02Tests
+          path: ./citest02/Features/Home/Sources/SnapshotTest/__Snapshots__
           key: "snapshot-test"
+          # Features/Home/Sources/SnapshotTest/__Snapshots__/citest02Tests
