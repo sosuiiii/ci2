@@ -83,7 +83,7 @@ jobs:
           
           mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
           
-          # ログ出力: FAILED_DIR 内の画像一覧
+          # ログ出力: FAILED_DIR 内の画像一覧（再帰的に検索）
           echo "----- Failed snapshots in $FAILED_DIR -----"
           find "$FAILED_DIR" -type f
           
@@ -91,7 +91,8 @@ jobs:
           echo "----- Success snapshots (under __Snapshots__ directories) in $SUCCESS_DIR -----"
           find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/*"
           
-          for failed in "$FAILED_DIR"/*; do
+          # FAILED_DIR 内の全画像ファイルを再帰的に検索してループ
+          find "$FAILED_DIR" -type f | while read failed; do
             filename=$(basename "$failed")
             # find コマンドで __Snapshots__ ディレクトリ内にある一致する画像を検索
             found_success=$(find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/$filename" | head -n 1)
