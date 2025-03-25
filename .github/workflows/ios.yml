@@ -1,10 +1,8 @@
 name: iOS starter workflow
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
 
 jobs:
   build:
@@ -14,36 +12,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.0.app
-      - name: Print Xcode version
-        run: xcodebuild -version
-      - name: Print available simulators
-        run: xcrun simctl list
+
+#      - name: Print Xcode version
+#        run: xcodebuild -version
+#
+#      - name: Print available simulators
+#        run: xcrun simctl list
+
       - name: Set Default Scheme
         run: |
           scheme_list=$(xcodebuild -list -json | tr -d "\n")
           default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
           echo $default | cat >default
           echo Using default scheme: $default
+
       - name: Build
         env:
           scheme: ${{ 'default' }}
           platform: ${{ 'iOS Simulator' }}
         run: |
-          # xcrun xctrace returns via stderr, not the expected stdout (see https://developer.apple.com/forums/thread/663959)
           device=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//"`
           if [ $scheme = default ]; then scheme=$(cat default); fi
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild build-for-testing -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
+
       - name: Restore VRT snapshots
         uses: actions/cache@v3
         id: restore-vrt
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
-#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
+
       - name: Check if images exist in SnapshotFilePath folder
         run: |
           count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
@@ -53,82 +56,143 @@ jobs:
             echo "No images found in SnapshotFilePath folder."
           fi
 
-      - name: Install ImageMagick on macOS
-        run: brew install imagemagick
-
       - name: Test
         env:
           scheme: ${{ 'default' }}
           platform: ${{ 'iOS Simulator' }}
         run: |
-          # xcrun xctrace returns via stderr, not the expected stdout (see https://developer.apple.com/forums/thread/663959)
           device=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//"`
           if [ $scheme = default ]; then scheme=$(cat default); fi
           if [ "`ls -A | grep -i \\.xcworkspace\$`" ]; then filetype_parameter="workspace" && file_to_build="`ls -A | grep -i \\.xcworkspace\$`"; else filetype_parameter="project" && file_to_build="`ls -A | grep -i \\.xcodeproj\$`"; fi
           file_to_build=`echo $file_to_build | awk '{$1=$1;print}'`
           xcodebuild test-without-building -scheme "$scheme" -"$filetype_parameter" "$file_to_build" -destination "platform=$platform,name=iPhone 16"
 
-      - name: Generate diff images for all failed snapshots using ksdiff
+      - name: Install ImageMagick on macOS
+        if: failure()
+        run: brew install imagemagick
+
+      - name: Generate diff images for all failed snapshots using compare
         if: failure()
         run: |
           set -e
           FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
-          mkdir -p "$DIFF_DIR"
+          SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
+          FAILED_OUT_DIR="$(pwd)/artifacts/failed"
+      
+          mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
       
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
             success="$SUCCESS_DIR/$filename"
             if [ -f "$success" ]; then
-              diff_file="$DIFF_DIR/diff_$filename"
-              echo "Generating diff for $filename"
-              echo "before: compare"
-              output=$(compare "$success" "$failed" "$diff_file" 2>&1) || true
-              exit_code=$?
-              echo "after compare"
-              if [ $exit_code -ne 0 ] && [ ! -f "$diff_file" ]; then
-                echo "Error while comparing $filename:"
-                echo "$output"
-                exit 1
-              else
-                echo "Success: $diff_file"
-              fi
-            else
-              echo "Success snapshot not found for $filename, skipping."
+              diff_file="$DIFF_DIR/$filename"
+              compare "$success" "$failed" "$diff_file" || true
+      
+              # 成功・失敗画像もコピー
+              cp "$success" "$SUCCESS_OUT_DIR/$filename"
+              cp "$failed" "$FAILED_OUT_DIR/$filename"
             fi
           done
 
-      - name: Encode diff images and comment on PR
+      - name: Upload diff images as Artifact
         if: failure()
-        id: encode_diff_images
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: artifacts/diffs/*.png
+
+      - name: Upload success images as Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-success
+          path: artifacts/success/*.png
+
+      - name: Upload failed images as Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-failed
+          path: artifacts/failed/*.png
+
+      - name: 比較用ブランチ作成 & 画像をコミット
+        if: ${{ failure() }}
         run: |
-          {
-            echo 'ENCODED_IMAGES<<EOF'
-            for file in ./artifacts/diffs/*.png; do
-              [ -e "$file" ] || continue
-              echo "![Diff Image $(basename "$file")](data:image/png;base64,$(base64 -i "$file"))"
-              echo ""
-            done
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout --orphan comparison-screenshots
+          git reset --hard
+          git add artifacts
+          git commit -m "Add snapshot test screenshots for comparison"
+          git push origin comparison-screenshots --force
 
-      - name: Comment on PR with snapshot diffs
-        if: steps.encode_diff_images.outputs.ENCODED_IMAGES != ''
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: |
-            🚨 **Snapshotテストで差分が発生しています** 🚨
-      
-            ${{ steps.encode_diff_images.outputs.ENCODED_IMAGES }}
+      - name: コメント本文を生成
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          # 各ディレクトリからユニークなファイル名を集める（連想配列の代替）
+          files=()
+          for file in artifacts/success/*.png artifacts/diffs/*.png artifacts/failed/*.png; do
+            if [ -e "$file" ]; then
+              fname=$(basename "$file")
+              found=0
+              for existing in "${files[@]}"; do
+                if [ "$existing" = "$fname" ]; then
+                  found=1
+                  break
+                fi
+              done
+              if [ $found -eq 0 ]; then
+                files+=("$fname")
+              fi
+            fi
+          done
+          
+          REPO=${GITHUB_REPOSITORY}
+          BRANCH=comparison-screenshots
+          BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}/artifacts"
+          
+          rows=""
+          for fname in "${files[@]}"; do
+            rows="${rows}"$'    <tr>\n'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/success/'${fname}'" width="300"></td>'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/diffs/'${fname}'" width="300"></td>'
+            rows="${rows}"$'      <td>'${fname}'<br><img src="'${BASE_URL}'/failed/'${fname}'" width="300"></td>'
+            rows="${rows}"$'    </tr>\n'
+          done
+          if [ -z "$rows" ]; then
+            rows=$'    <tr><td colspan="3">No images found</td></tr>\n'
+          fi
+          
+          comment=$(cat <<EOF | sed '/./,$!d'
+          <table>
+            <thead>
+              <tr>
+                <th>既存</th>
+                <th>差分</th>
+                <th>今回</th>
+              </tr>
+            </thead>
+            <tbody>
+          ${rows}  </tbody>
+          </table>
+          EOF
+          )
+          # 生成したコメントをファイルに書き出す
+          echo "$comment" > comment.md
+          # ログ出力して内容を確認
+          cat comment.md
 
-      # 生成した複数のdiff画像をアーティファクトとしてアップロード
-      - name: Upload diff artifacts
-        if: failure()
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+      - name: PR にコメント投稿
+        if: ${{ failure() }}
+        uses: peter-evans/create-or-update-comment@v3
         with:
-          name: snapshot-diff
-          path: artifacts/diffs
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: comment.md
 
       - name: Cache VRT snapshots
         if: always()
@@ -137,4 +201,3 @@ jobs:
         with:
           path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
           key: "snapshot-test"
-#          key: ${{ runner.os }}-snapshot-${{ hashFiles('./citest02/Snapshots/__Snapshots__/SnapshotFilePath/**/*') }}
