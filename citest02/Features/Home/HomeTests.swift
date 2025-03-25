@@ -1,6 +1,6 @@
 //
-//  DiscoverTests.swift
-//  DiscoverTests
+//  HomeTests.swift
+//  HomeTests
 //
 //  Created by 田中 颯志 on 2/26/25.
 //
@@ -11,12 +11,12 @@ import SwiftUI
 import SnapshotTesting
 @testable import citest02
 
-struct DiscoverTests {
+struct HomeTests {
 
     @MainActor
-    @Test func example3() async throws {
+    @Test func example() async throws {
         assertSnapshot(
-            of: Text("テスト\nテスト").referenceFrame(),
+            of: Text("テスト\nテスト\nテスト").referenceFrame(),
             as: .wait(
                 for: 0,  // スクショまでの時間
                 on: .image(
@@ -32,7 +32,7 @@ struct DiscoverTests {
         )
     }
     @MainActor
-    @Test func example4() async throws {
+    @Test func example2() async throws {
         assertSnapshot(
             of: Text("テスト\nテスト").referenceFrame(),
             as: .wait(
