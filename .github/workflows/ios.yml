@@ -80,28 +80,28 @@ jobs:
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
-          
+
           mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
-          
+
           # ログ出力: FAILED_DIR 内の画像一覧（再帰的に検索）
           echo "----- Failed snapshots in $FAILED_DIR -----"
           find "$FAILED_DIR" -type f
-          
+
           # ログ出力: SUCCESS_DIR 内の __Snapshots__ 以下の画像一覧
           echo "----- Success snapshots (under __Snapshots__ directories) in $SUCCESS_DIR -----"
           find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/*"
-          
+
           # FAILED_DIR 内の全画像ファイルを再帰的に検索してループ
           find "$FAILED_DIR" -type f | while read failed; do
             filename=$(basename "$failed")
-            # find コマンドで __Snapshots__ ディレクトリ内にある一致する画像を検索
-            found_success=$(find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/$filename" | head -n 1)
-          
+            # ファイル名のみで検索（ディレクトリ構造は無視）
+            found_success=$(find "$SUCCESS_DIR" -type f -name "$filename" | head -n 1)
+
             if [ -n "$found_success" ]; then
               echo "Match found for: $filename"
               diff_file="$DIFF_DIR/$filename"
               compare "$found_success" "$failed" "$diff_file" || true
-          
+
               cp "$found_success" "$SUCCESS_OUT_DIR/$filename"
               cp "$failed" "$FAILED_OUT_DIR/$filename"
             else
