@@ -49,7 +49,7 @@ jobs:
 
       - name: Check if images exist in SnapshotFilePath folder
         run: |
-          count=$(find ./citest02/Snapshots/__Snapshots__/SnapshotFilePath -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
+          count=$(find ./citest02/Features/**/__Snapshots__/** -type f \( -iname "*.png" -o -iname "*.jpg" \) | wc -l)
           if [ $count -gt 0 ]; then
             echo "Found $count image(s) in SnapshotFilePath folder."
           else
@@ -75,7 +75,7 @@ jobs:
         if: failure()
         run: |
           set -e
-          FAILED_DIR="./citest02/Snapshots/__Snapshots__/Failure/SnapshotFilePath"
+          FAILED_DIR="./SnapshotsFailure/**"
           SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
@@ -199,5 +199,5 @@ jobs:
         uses: actions/cache/save@v3
         id: vrt-cache
         with:
-          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
+          path: ./citest02/Features/**/__Snapshots__/**
           key: "snapshot-test"
