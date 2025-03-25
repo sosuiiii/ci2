@@ -75,8 +75,11 @@ jobs:
         if: failure()
         run: |
           set -e
-          FAILED_DIR="./SnapshotsFailure/**"
-          SUCCESS_DIR="./citest02/Snapshots/__Snapshots__/SnapshotFilePath"
+          # globstarを有効にして再帰的なパス展開を可能にする
+          shopt -s globstar
+      
+          FAILED_DIR="./SnapshotsFailure"
+          SUCCESS_DIR="./citest02/Features"
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
@@ -85,13 +88,21 @@ jobs:
       
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
-            success="$SUCCESS_DIR/$filename"
-            if [ -f "$success" ]; then
+            found_success=""
+            # Features以下のすべての __Snapshots__ ディレクトリ内のファイルを検索
+            for success in "$SUCCESS_DIR"/**/__Snapshots__/*; do
+              if [ "$(basename "$success")" = "$filename" ]; then
+                found_success="$success"
+                break
+              fi
+            done
+      
+            if [ -n "$found_success" ]; then
               diff_file="$DIFF_DIR/$filename"
-              compare "$success" "$failed" "$diff_file" || true
+              compare "$found_success" "$failed" "$diff_file" || true
       
               # 成功・失敗画像もコピー
-              cp "$success" "$SUCCESS_OUT_DIR/$filename"
+              cp "$found_success" "$SUCCESS_OUT_DIR/$filename"
               cp "$failed" "$FAILED_OUT_DIR/$filename"
             fi
           done
