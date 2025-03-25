@@ -1,6 +1,6 @@
 //
-//  citest02Tests.swift
-//  citest02Tests
+//  HomeTests.swift
+//  HomeTests
 //
 //  Created by 田中 颯志 on 2/26/25.
 //
@@ -11,12 +11,12 @@ import SwiftUI
 import SnapshotTesting
 @testable import citest02
 
-struct citest02Tests {
+struct HomeTests {
 
     @MainActor
     @Test func example() async throws {
         assertSnapshot(
-            of: Text("テスト").referenceFrame(),
+            of: Text("テスト\nテスト").referenceFrame(),
             as: .wait(
                 for: 0,  // スクショまでの時間
                 on: .image(
@@ -27,8 +27,8 @@ struct citest02Tests {
                     )
                 )
             ),
-            record: false,  // CI環境で既存のスナップショットと比較する場合はfalse
-            file: SnapshotFilePath.path
+            record: false  // CI環境で既存のスナップショットと比較する場合はfalse
+//            file: SnapshotFilePath.path
         )
     }
     @MainActor
@@ -45,8 +45,8 @@ struct citest02Tests {
                     )
                 )
             ),
-            record: false,  // CI環境で既存のスナップショットと比較する場合はfalse
-            file: SnapshotFilePath.path
+            record: false  // CI環境で既存のスナップショットと比較する場合はfalse
+//            file: SnapshotFilePath.path
         )
     }
 }
