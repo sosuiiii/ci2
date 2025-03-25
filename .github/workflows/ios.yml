@@ -80,20 +80,31 @@ jobs:
           DIFF_DIR="$(pwd)/artifacts/diffs"
           SUCCESS_OUT_DIR="$(pwd)/artifacts/success"
           FAILED_OUT_DIR="$(pwd)/artifacts/failed"
-      
+          
           mkdir -p "$DIFF_DIR" "$SUCCESS_OUT_DIR" "$FAILED_OUT_DIR"
-      
+          
+          # ログ出力: FAILED_DIR 内の画像一覧
+          echo "----- Failed snapshots in $FAILED_DIR -----"
+          find "$FAILED_DIR" -type f
+          
+          # ログ出力: SUCCESS_DIR 内の __Snapshots__ 以下の画像一覧
+          echo "----- Success snapshots (under __Snapshots__ directories) in $SUCCESS_DIR -----"
+          find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/*"
+          
           for failed in "$FAILED_DIR"/*; do
             filename=$(basename "$failed")
-            # find コマンドで __Snapshots__ ディレクトリ内にあるファイルから一致するものを検索
+            # find コマンドで __Snapshots__ ディレクトリ内にある一致する画像を検索
             found_success=$(find "$SUCCESS_DIR" -type f -path "*/__Snapshots__/$filename" | head -n 1)
-      
+          
             if [ -n "$found_success" ]; then
+              echo "Match found for: $filename"
               diff_file="$DIFF_DIR/$filename"
               compare "$found_success" "$failed" "$diff_file" || true
-      
+          
               cp "$found_success" "$SUCCESS_OUT_DIR/$filename"
               cp "$failed" "$FAILED_OUT_DIR/$filename"
+            else
+              echo "No matching success image found for: $failed"
             fi
           done
 
