@@ -14,7 +14,7 @@ import SnapshotTesting
 struct DiscoverTests {
 
     @MainActor
-    @Test func example() async throws {
+    @Test func example3() async throws {
         assertSnapshot(
             of: Text("テスト").referenceFrame(),
             as: .wait(
@@ -32,7 +32,7 @@ struct DiscoverTests {
         )
     }
     @MainActor
-    @Test func example2() async throws {
+    @Test func example4() async throws {
         assertSnapshot(
             of: Text("テスト\nテスト").referenceFrame(),
             as: .wait(
