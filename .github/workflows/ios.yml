@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v3
         id: restore-vrt
         with:
-          path: ./citest02/Snapshots/__Snapshots__/SnapshotFilePath
+          path: ./citest02/Features/**/__Snapshots__/**
           key: "snapshot-test"
 
       - name: Check if images exist in SnapshotFilePath folder
